@@ -34,11 +34,16 @@
 #ifndef DEVICEBASE_H
 #define DEVICEBASE_H
 
+#include <NMEAGPS.h>  //http://librarymanager/All#NeoGPS
+
 // Base class
 class Device {
     public:
         virtual void setConsole() = 0;
+        virtual void setGps() = 0;
     protected:
+        static NMEAGPS gps;
+        static gps_fix fix;
     
 };
 

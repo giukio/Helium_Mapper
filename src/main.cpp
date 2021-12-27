@@ -43,9 +43,10 @@ void setup() {
   // put your setup code here, to run once:
 
   dev.setConsole();
-
-
+  Serial.println("\nHelium Mapper");
   setupAtCommands();
+  dev.setGps();
+
 }
 
 void loop() {
