@@ -1,5 +1,5 @@
 /*!
- *  @file main.cpp
+ *  @file devices.h
  *
  *  BSD 3-Clause License
  *  Copyright (c) 2021, Giulio Berti
@@ -32,25 +32,15 @@
  *  
  */
 
-#include <Arduino.h>
-#include <vector>
-#include <at.h>
-#include <devices.h>
+#ifndef DEVICES_H
+#define DEVICES_H
 
+#ifdef USE_RAK7200
+#include <devices\rak7200.h>
+#endif
 
+#ifdef USE_DRAGINO
+#include <devices\dragino.h>
+#endif
 
-
-void setup() {
-  // put your setup code here, to run once:
-
-  dev.setConsole();
-
-
-  setupAtCommands();
-}
-
-void loop() {
-  // put your main code here, to run repeatedly:
-
-  readAtCommands();
-}
+#endif

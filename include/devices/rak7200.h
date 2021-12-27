@@ -1,5 +1,5 @@
 /*!
- *  @file main.cpp
+ *  @file rak7200.h
  *
  *  BSD 3-Clause License
  *  Copyright (c) 2021, Giulio Berti
@@ -31,26 +31,32 @@
  *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *  
  */
+#ifndef RAK7200_H
+#define RAK7200_H
 
-#include <Arduino.h>
-#include <vector>
-#include <at.h>
-#include <devices.h>
+#include <deviceBase.h>
 
+// RAK7200 S76G GPIOs
+#define RAK7200_S76G_BLUE_LED             PA8  // Blue LED (D2) active low
+#define RAK7200_S76G_RED_LED              PA11 // Red LED (D3) active low
+#define RAK7200_S76G_GREEN_LED            PA12 // Green LED (D4) active low
+#define RAK7200_S76G_ADC_VBAT             PB0  // ADC connected to the battery (VBATT 1M PB0 1.5M GND) 1.5M / (1M + 1.5M) = 0.6
+#define RAK7200_S76G_LIS3DH_INT1          PA0  // LIS3DH (U5) (I2C address 0x19) Interrupt INT1
+#define RAK7200_S76G_LIS3DH_INT2          PB5  // LIS3DH (U5) (I2C address 0x19) Interrupt INT2
+#define RAK7200_S76G_LPS_INT              PA5  // LPS22HB (U7) (I2C address 0x5C) Interrupt (mutually exclusive with SPI1_NSS)
+#define RAK7200_S76G_MPU_INT              PA5  // MPU9250 (U8) (I2C address 0x68) Interrupt (mutually exclusive with SPI1_CLK)
+#define RAK7200_S76G_TP4054_CHG1          PB1  // ADC TP4054 (U3)
+#define RAK7200_S76G_TP4054_CHG2          PB8  // ADC TP4054 (U3)
 
+// AcSiP S7xx UART1 (Console)
+#define S7xx_CONSOLE_TX                   PA9  // UART1 (CH340E U1)
+#define S7xx_CONSOLE_RX                   PA10 // UART1 (CH340E U1)
 
+extern class Rak7200 dev;
 
-void setup() {
-  // put your setup code here, to run once:
+class Rak7200: public Device {
+    public:
+        void setConsole();
+};
 
-  dev.setConsole();
-
-
-  setupAtCommands();
-}
-
-void loop() {
-  // put your main code here, to run repeatedly:
-
-  readAtCommands();
-}
+#endif
