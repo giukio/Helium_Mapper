@@ -53,10 +53,6 @@
 #define S7xx_CONSOLE_RX                   PA10 // UART1 (CH340E U1)
 
 
-
-void command_listener();
-
-
 void setup() {
   // put your setup code here, to run once:
   #ifndef ESP8266
@@ -70,7 +66,6 @@ void setup() {
 
 
   setupAtCommands();
-    
 }
 
 void loop() {
