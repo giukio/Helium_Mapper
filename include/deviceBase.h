@@ -1,5 +1,5 @@
 /*!
- *  @file main.cpp
+ *  @file deviceBase.h
  *
  *  BSD 3-Clause License
  *  Copyright (c) 2021, Giulio Berti
@@ -31,25 +31,15 @@
  *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *  
  */
+#ifndef DEVICEBASE_H
+#define DEVICEBASE_H
 
-#include <Arduino.h>
-#include <at.h>
-#include <devices.h>
+// Base class
+class Device {
+    public:
+        virtual void setConsole() = 0;
+    protected:
+    
+};
 
-
-
-
-void setup() {
-  // put your setup code here, to run once:
-
-  dev.setConsole();
-
-
-  setupAtCommands();
-}
-
-void loop() {
-  // put your main code here, to run repeatedly:
-
-  readAtCommands();
-}
+#endif

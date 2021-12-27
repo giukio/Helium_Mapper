@@ -1,5 +1,5 @@
 /*!
- *  @file main.cpp
+ *  @file rak7200.cpp
  *
  *  BSD 3-Clause License
  *  Copyright (c) 2021, Giulio Berti
@@ -33,23 +33,19 @@
  */
 
 #include <Arduino.h>
-#include <at.h>
-#include <devices.h>
+#include <deviceBase.h>
+#include <devices\rak7200.h>
 
 
 
+void Rak7200::setConsole(){
+  #ifndef ESP8266
+    while (!Serial) yield();     // will pause Zero, Leonardo, etc until serial console opens
+  #endif
 
-void setup() {
-  // put your setup code here, to run once:
-
-  dev.setConsole();
-
-
-  setupAtCommands();
+  // Configure AcSiP S7xx Serial1 to Arduino Serial
+  Serial.setTx(S7xx_CONSOLE_TX);
+  Serial.setRx(S7xx_CONSOLE_RX);
+  Serial.begin(115200);
 }
 
-void loop() {
-  // put your main code here, to run repeatedly:
-
-  readAtCommands();
-}

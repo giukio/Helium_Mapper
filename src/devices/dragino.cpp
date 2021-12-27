@@ -1,5 +1,5 @@
 /*!
- *  @file main.cpp
+ *  @file dragino.cpp
  *
  *  BSD 3-Clause License
  *  Copyright (c) 2021, Giulio Berti
@@ -33,23 +33,16 @@
  */
 
 #include <Arduino.h>
-#include <at.h>
-#include <devices.h>
+#include <deviceBase.h>
+#include <devices\dragino.h>
 
 
 
+void Dragino::setConsole(){
+  #ifndef ESP8266
+    while (!Serial) yield();     // will pause Zero, Leonardo, etc until serial console opens
+  #endif
 
-void setup() {
-  // put your setup code here, to run once:
-
-  dev.setConsole();
-
-
-  setupAtCommands();
+  Serial.begin(115200);
 }
 
-void loop() {
-  // put your main code here, to run repeatedly:
-
-  readAtCommands();
-}
