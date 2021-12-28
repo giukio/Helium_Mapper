@@ -46,7 +46,7 @@ void setup() {
   Serial.println("\nHelium Mapper");
   setupAtCommands();
   dev.setGps();
-
+  dev.setLora();
 }
 
 void loop() {

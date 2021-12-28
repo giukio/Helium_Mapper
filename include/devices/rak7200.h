@@ -62,6 +62,23 @@
 #define S7xG_CXD5603_BAUD_RATE            115200
 
 
+// AcSiP S7xx Internal SPI2 STM32L073RZ(U|Y)x <--> SX127x
+#define S7xx_SX127x_MOSI                  PB15 // SPI2
+#define S7xx_SX127x_MISO                  PB14 // SPI2
+#define S7xx_SX127x_SCK                   PB13 // SPI2
+#define S7xx_SX127x_NSS                   PB12 // SPI2
+#define S7xx_SX127x_NRESET                PB10
+#define S7xx_SX127x_DIO0                  PB11
+#define S7xx_SX127x_DIO1                  PC13
+#define S7xx_SX127x_DIO2                  PB9
+#define S7xx_SX127x_DIO3                  PB4  // unused
+#define S7xx_SX127x_DIO4                  PB3  // unused
+#define S7xx_SX127x_DIO5                  PA15 // unused
+#define S7xx_SX127x_ANTENNA_SWITCH_RXTX   PA1  // Radio Antenna Switch 1:RX, 0:TX
+
+#define SX1276_RegVersion                 0x42
+
+
 extern class Rak7200 dev;
 
 class Rak7200: public Device {
@@ -69,10 +86,19 @@ class Rak7200: public Device {
         Rak7200();
         void setConsole();
         void setGps();
+        void setLora();
 
     private:
         bool GNSS_probe();
         HardwareSerial* _GNSS;
+
+        bool _has_SX1276;
+        void LmicInit();
+        void do_send(osjob_t *j);
+        osjob_t _sendjob;
+        uint8_t _loRaPacketData[24];
+        uint8_t _loRaPacketDataSize;
+
         
 
 };
