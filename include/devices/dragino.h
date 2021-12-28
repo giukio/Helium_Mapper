@@ -41,6 +41,7 @@ extern class Dragino dev;
 class Dragino: public Device {
     public:
         void setConsole();
+        void setGps();
 };
 
 #endif

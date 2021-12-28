@@ -52,11 +52,29 @@
 #define S7xx_CONSOLE_TX                   PA9  // UART1 (CH340E U1)
 #define S7xx_CONSOLE_RX                   PA10 // UART1 (CH340E U1)
 
+// AcSiP S7xG SONY CXD5603GF GNSS
+#define RAK7200_S76G_CXD5603_POWER_ENABLE PC4  // Enable 1V8 Power to GNSS (U2 TPS62740)
+#define T_Motion_S76G_CXD5603_1PPS        PB5  // TTGO T-Motion 1PPS
+#define S7xG_CXD5603_RESET                PB2  // Reset does not appear to work
+#define S7xG_CXD5603_LEVEL_SHIFTER        PC6
+#define S7xG_CXD5603_UART_TX              PC10 // UART4
+#define S7xG_CXD5603_UART_RX              PC11 // UART4
+#define S7xG_CXD5603_BAUD_RATE            115200
+
+
 extern class Rak7200 dev;
 
 class Rak7200: public Device {
     public:
+        Rak7200();
         void setConsole();
+        void setGps();
+
+    private:
+        bool GNSS_probe();
+        HardwareSerial* _GNSS;
+        
+
 };
 
 #endif
