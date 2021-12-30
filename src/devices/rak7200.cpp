@@ -48,7 +48,13 @@ const lmic_pinmap lmic_pins = {
 };
 
 Rak7200::Rak7200(){
-    HardwareSerial _GNSS = new HardwareSerial(S7xG_CXD5603_UART_RX, S7xG_CXD5603_UART_TX);
+    _GNSS = new HardwareSerial(S7xG_CXD5603_UART_RX, S7xG_CXD5603_UART_TX);
+    if (_GNSS == NULL)
+    {
+        Serial.println("ERROR: Couldn't Configure GNSS Hardware Serial");
+        while(1);
+    }
+    
     _loRaPacketData[24] = {0};
     _loRaPacketDataSize = 0;
 }
@@ -97,32 +103,25 @@ void Rak7200::setGps(){
     digitalWrite(RAK7200_S76G_CXD5603_POWER_ENABLE, HIGH);
     delay(1200); // Delay 315µs to 800µs ramp up time
 
-    Serial.println("_GNSS->begin");
-    Rak7200::_GNSS->begin(S7xG_CXD5603_BAUD_RATE);
+    _GNSS->begin(S7xG_CXD5603_BAUD_RATE);
 
-    Serial.println("drive GNSS RST pin low");
     /* drive GNSS RST pin low */
     pinMode(S7xG_CXD5603_RESET, OUTPUT);
     digitalWrite(S7xG_CXD5603_RESET, LOW);
 
-    Serial.println("activate 1.8V<->3.3V level shifters");
     /* activate 1.8V<->3.3V level shifters */
     pinMode(S7xG_CXD5603_LEVEL_SHIFTER, OUTPUT);
     digitalWrite(S7xG_CXD5603_LEVEL_SHIFTER, HIGH);
 
-    Serial.println("keep RST low to ensure proper IC reset");
     /* keep RST low to ensure proper IC reset */
     delay(250);
 
-    Serial.println("release");
     /* release */
     digitalWrite(S7xG_CXD5603_RESET, HIGH);
 
-    Serial.println("give Sony GNSS few ms to warm up");
     /* give Sony GNSS few ms to warm up */
     delay(125);
 
-    Serial.println("configure GNSS");
     /* configure GNSS */
     // _GNSS.write("@GCD\r\n"); // Cold start
     // delay(500);
