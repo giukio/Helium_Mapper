@@ -36,6 +36,7 @@
 
 #include <NMEAGPS.h>  //http://librarymanager/All#NeoGPS
 #include <lmic.h>     //http://librarymanager/All#MCCI+LoRaWAN+LMIC+library
+#include <hal/hal.h>
 
 // Base class
 class Device {

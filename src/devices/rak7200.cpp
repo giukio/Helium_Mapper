@@ -37,10 +37,19 @@
 #include <devices\rak7200.h>
 #include <SPI.h>
 
-Rak7200::Rak7200(){
+const lmic_pinmap lmic_pins = {
+        .nss = S7xx_SX127x_NSS,
+        .rxtx = S7xx_SX127x_ANTENNA_SWITCH_RXTX,
+        .rst = S7xx_SX127x_NRESET,
+        .dio = {S7xx_SX127x_DIO0, S7xx_SX127x_DIO1, S7xx_SX127x_DIO2},
+        .rxtx_rx_active = 1,
+        .rssi_cal = 10,
+        .spi_freq = 1000000
+};
 
+Rak7200::Rak7200(){
     HardwareSerial _GNSS = new HardwareSerial(S7xG_CXD5603_UART_RX, S7xG_CXD5603_UART_TX);
-    _loRaPacketData[24] = "";
+    _loRaPacketData[24] = {0};
     _loRaPacketDataSize = 0;
 }
 
@@ -229,8 +238,8 @@ void Rak7200::do_send(osjob_t *j) {
         Serial.println(F("OP_TXRXPEND, not sending"));
     }
     else {
-        LMIC_setTxData2(1, LoRaPacketData, LoRaPacketDataSize, 0);
-        LoRaPacketDataSize = 0;
+        LMIC_setTxData2(1, _loRaPacketData, _loRaPacketDataSize, 0);
+        _loRaPacketDataSize = 0;
         Serial.println(F("Packet queued"));
     }
     // Next TX is scheduled after TX_COMPLETE event.
