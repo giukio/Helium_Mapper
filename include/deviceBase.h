@@ -43,10 +43,11 @@ class Device {
     public:
         virtual void setConsole() = 0;
         virtual void setGps() = 0;
+        virtual gps_fix getGpsFix() = 0;
         virtual void setLora() = 0;
     protected:
-        static NMEAGPS gps;
-        static gps_fix fix;
+        NMEAGPS gps;
+        gps_fix fix;
     
 };
 

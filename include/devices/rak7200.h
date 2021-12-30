@@ -86,11 +86,12 @@ class Rak7200: public Device {
         Rak7200();
         void setConsole();
         void setGps();
+        gps_fix getGpsFix();
         void setLora();
 
     private:
         bool GNSS_probe();
-        HardwareSerial* _GNSS;
+        HardwareSerial* _GNSS = NULL;
 
         bool _has_SX1276;
         void LmicInit();

@@ -51,6 +51,34 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-
   readAtCommands();
+  gps_fix fix = dev.getGpsFix();
+  if (fix.valid.location) {
+    fix.valid.location = false;
+    digitalToggle(RAK7200_S76G_GREEN_LED);
+
+    // Prepare upstream data transmission at the next possible time.
+    Serial.print("Location: ");
+    Serial.print(fix.latitudeL());
+
+    Serial.print(", ");
+    Serial.print(fix.longitudeL());
+
+    Serial.print(", Altitude: ");
+    Serial.print(fix.altitude_cm());
+
+    Serial.print(", Satellites: ");
+    Serial.print(fix.satellites);
+
+    Serial.print(", HDOP: ");
+    Serial.print(fix.hdop);
+
+    Serial.print(", Speed: ");
+    Serial.print(fix.speed_kph());
+  }
+
+  Serial.print(", V: ");
+  Serial.print(float(analogRead(RAK7200_S76G_ADC_VBAT)) / 4096 * 3.30 / 0.6 * 10.0);
+  Serial.println();
+  delay(1000);
 }
