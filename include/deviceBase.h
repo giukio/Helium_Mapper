@@ -35,12 +35,15 @@
 #define DEVICEBASE_H
 
 #include <NMEAGPS.h>  //http://librarymanager/All#NeoGPS
+#include <lmic.h>     //http://librarymanager/All#MCCI+LoRaWAN+LMIC+library
+#include <hal/hal.h>
 
 // Base class
 class Device {
     public:
         virtual void setConsole() = 0;
         virtual void setGps() = 0;
+        virtual void setLora() = 0;
     protected:
         static NMEAGPS gps;
         static gps_fix fix;

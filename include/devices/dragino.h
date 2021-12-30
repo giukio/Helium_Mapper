@@ -42,6 +42,7 @@ class Dragino: public Device {
     public:
         void setConsole();
         void setGps();
+        void setLora();
 };
 
 #endif
