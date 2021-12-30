@@ -78,6 +78,7 @@
 
 #define SX1276_RegVersion                 0x42
 
+const unsigned TX_INTERVAL = 15; // Transmit every 15 seconds
 
 extern class Rak7200 dev;
 
@@ -88,6 +89,11 @@ class Rak7200: public Device {
         void setGps();
         gps_fix getGpsFix();
         void setLora();
+        // void do_send(osjob_t *j);
+        uint8_t* getLoRaPacketData();
+        uint8_t  getLoRaPacketDataSize();
+        void resetLoRaPacketDataSize();
+        osjob_t* getSendjob();
 
     private:
         bool GNSS_probe();
@@ -95,7 +101,8 @@ class Rak7200: public Device {
 
         bool _has_SX1276;
         void LmicInit();
-        void do_send(osjob_t *j);
+        // void onEvent(ev_t ev);
+
         osjob_t _sendjob;
         uint8_t _loRaPacketData[24];
         uint8_t _loRaPacketDataSize;

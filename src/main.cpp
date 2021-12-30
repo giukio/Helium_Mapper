@@ -45,13 +45,15 @@ void setup() {
   dev.setConsole();
   Serial.println("\nHelium Mapper");
   setupAtCommands();
-  dev.setLora();
   dev.setGps();
+  dev.setLora();
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
   readAtCommands();
+  os_runloop_once();
+
   gps_fix fix = dev.getGpsFix();
   if (fix.valid.location) {
     fix.valid.location = false;
@@ -75,10 +77,10 @@ void loop() {
 
     Serial.print(", Speed: ");
     Serial.print(fix.speed_kph());
+    
+    Serial.print(", V: ");
+    Serial.print(float(analogRead(RAK7200_S76G_ADC_VBAT)) / 4096 * 3.30 / 0.6 * 10.0);
+    Serial.println();
   }
 
-  Serial.print(", V: ");
-  Serial.print(float(analogRead(RAK7200_S76G_ADC_VBAT)) / 4096 * 3.30 / 0.6 * 10.0);
-  Serial.println();
-  delay(1000);
 }
