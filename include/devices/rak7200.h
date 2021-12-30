@@ -86,6 +86,7 @@ class Rak7200: public Device {
         Rak7200();
         void setConsole();
         void setGps();
+        gps_fix getGpsFix();
         void setLora();
 
     private:

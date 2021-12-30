@@ -168,6 +168,13 @@ void Rak7200::setGps(){
     Serial.println(Rak7200::GNSS_probe() ? "PASS" : "FAIL");  
 }
 
+gps_fix Rak7200::getGpsFix(){
+    while (Rak7200::gps.available(*_GNSS)) {
+        Rak7200::fix = Rak7200::gps.read();
+    }
+    return Rak7200::fix;
+}
+
 void Rak7200::setLora(){
     SPI.setMISO(S7xx_SX127x_MISO);
     SPI.setMOSI(S7xx_SX127x_MOSI);
