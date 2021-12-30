@@ -89,6 +89,8 @@ class Rak7200: public Device {
         void setGps();
         gps_fix getGpsFix();
         void setLora();
+        void sendLora(uint8_t LoRaPacketData[], uint8_t LoRaPacketDataSize);
+
         // void do_send(osjob_t *j);
         uint8_t* getLoRaPacketData();
         uint8_t  getLoRaPacketDataSize();

@@ -226,6 +226,12 @@ void Rak7200::setLora(){
     LmicInit();
 }
 
+void Rak7200::sendLora(uint8_t LoRaPacketData[], uint8_t LoRaPacketDataSize){
+    memcpy_P(_loRaPacketData, LoRaPacketData, LoRaPacketDataSize);
+    _loRaPacketDataSize = LoRaPacketDataSize;
+}
+
+
 uint8_t* Rak7200::getLoRaPacketData(){
     return _loRaPacketData;
 }

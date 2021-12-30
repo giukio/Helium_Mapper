@@ -36,7 +36,8 @@
 #include <at.h>
 #include <devices.h>
 
-
+static uint8_t LoRaPacketData[24] = "";
+static uint8_t LoRaPacketDataSize = 0;
 
 
 void setup() {
@@ -54,33 +55,65 @@ void loop() {
   readAtCommands();
   os_runloop_once();
 
-  gps_fix fix = dev.getGpsFix();
-  if (fix.valid.location) {
-    fix.valid.location = false;
+  dev.getGpsFix();
+  if (dev.fix.valid.location) {
+    dev.fix.valid.location = false;
     digitalToggle(RAK7200_S76G_GREEN_LED);
 
     // Prepare upstream data transmission at the next possible time.
-    Serial.print("Location: ");
-    Serial.print(fix.latitudeL());
+         uint32_t i = 0;
+        int32_t data = 0;
+        data = (int32_t)(dev.fix.latitudeL());
+        Serial.print("Location: ");
+        Serial.print(data);
+        LoRaPacketData[i++] = data >> 24;
+        LoRaPacketData[i++] = data >> 16;
+        LoRaPacketData[i++] = data >> 8;
+        LoRaPacketData[i++] = data;
+        data = (int32_t)(dev.fix.longitudeL());
+        Serial.print(", ");
+        Serial.print(data);
+        LoRaPacketData[i++] = data >> 24;
+        LoRaPacketData[i++] = data >> 16;
+        LoRaPacketData[i++] = data >> 8;
+        LoRaPacketData[i++] = data;
+        data = (int32_t)(dev.fix.altitude_cm());
+        Serial.print(", Altitude: ");
+        Serial.print(data);
+        LoRaPacketData[i++] = data >> 24;
+        LoRaPacketData[i++] = data >> 16;
+        LoRaPacketData[i++] = data >> 8;
+        LoRaPacketData[i++] = data;
+        data = (uint32_t)(0);
+        Serial.print(", Accuracy: ");
+        Serial.print(data);
+        LoRaPacketData[i++] = data >> 24;
+        LoRaPacketData[i++] = data >> 16;
+        LoRaPacketData[i++] = data >> 8;
+        LoRaPacketData[i++] = data;
+        data = (uint8_t)(dev.fix.satellites);
+        Serial.print(", Satellites: ");
+        Serial.print(data);
+        LoRaPacketData[i++] = data;
+        data = (uint16_t)(dev.fix.hdop);
+        Serial.print(", HDOP: ");
+        Serial.print(data);
+        LoRaPacketData[i++] = data >> 8;
+        LoRaPacketData[i++] = data;
+        data = (int32_t)((dev.fix.speed_kph() * 100));
+        //data = (int32_t)(0);
+        Serial.print(", Speed: ");
+        Serial.print(data);
+        LoRaPacketData[i++] = data >> 24;
+        LoRaPacketData[i++] = data >> 16;
+        LoRaPacketData[i++] = data >> 8;
+        LoRaPacketData[i++] = data;
+        LoRaPacketDataSize = i;
+        Serial.print(", V: ");
+        Serial.print(float(analogRead(RAK7200_S76G_ADC_VBAT)) / 4096 * 3.30 / 0.6 * 10.0);
+        Serial.println();
 
-    Serial.print(", ");
-    Serial.print(fix.longitudeL());
-
-    Serial.print(", Altitude: ");
-    Serial.print(fix.altitude_cm());
-
-    Serial.print(", Satellites: ");
-    Serial.print(fix.satellites);
-
-    Serial.print(", HDOP: ");
-    Serial.print(fix.hdop);
-
-    Serial.print(", Speed: ");
-    Serial.print(fix.speed_kph());
-    
-    Serial.print(", V: ");
-    Serial.print(float(analogRead(RAK7200_S76G_ADC_VBAT)) / 4096 * 3.30 / 0.6 * 10.0);
-    Serial.println();
+    dev.sendLora(LoRaPacketData, LoRaPacketDataSize);
   }
 
 }
