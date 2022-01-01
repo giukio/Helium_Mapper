@@ -45,7 +45,7 @@ class Device {
         virtual void setGps() = 0;
         virtual gps_fix getGpsFix() = 0;
         virtual void setLora() = 0;
-        virtual void sendLora(uint8_t LoRaPacketData[], uint8_t LoRaPacketDataSize) = 0;
+        // virtual void sendLora(uint8_t LoRaPacketData[], uint8_t LoRaPacketDataSize) = 0;
         gps_fix fix;
     protected:
         NMEAGPS gps;

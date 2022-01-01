@@ -61,7 +61,7 @@ void loop() {
     digitalToggle(RAK7200_S76G_GREEN_LED);
 
     // Prepare upstream data transmission at the next possible time.
-         uint32_t i = 0;
+        uint32_t i = 0;
         int32_t data = 0;
         data = (int32_t)(dev.fix.latitudeL());
         Serial.print("Location: ");
