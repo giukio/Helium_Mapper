@@ -35,10 +35,7 @@
 #include <Arduino.h>
 #include <at.h>
 #include <devices.h>
-
-static uint8_t LoRaPacketData[24] = "";
-static uint8_t LoRaPacketDataSize = 0;
-
+#include <lora.h>
 
 void setup() {
   // put your setup code here, to run once:
@@ -48,6 +45,7 @@ void setup() {
   setupAtCommands();
   dev.setGps();
   dev.setLora();
+  LMIC_init();
 }
 
 void loop() {
@@ -63,57 +61,44 @@ void loop() {
     // Prepare upstream data transmission at the next possible time.
         uint32_t i = 0;
         int32_t data = 0;
-        data = (int32_t)(dev.fix.latitudeL());
+        LoraParameter::gps location;
+
+        location.lat = (int32_t)(dev.fix.latitudeL());
         Serial.print("Location: ");
-        Serial.print(data);
-        LoRaPacketData[i++] = data >> 24;
-        LoRaPacketData[i++] = data >> 16;
-        LoRaPacketData[i++] = data >> 8;
-        LoRaPacketData[i++] = data;
-        data = (int32_t)(dev.fix.longitudeL());
+        Serial.print(location.lat);
+
+        location.lon = (int32_t)(dev.fix.longitudeL());
         Serial.print(", ");
-        Serial.print(data);
-        LoRaPacketData[i++] = data >> 24;
-        LoRaPacketData[i++] = data >> 16;
-        LoRaPacketData[i++] = data >> 8;
-        LoRaPacketData[i++] = data;
-        data = (int32_t)(dev.fix.altitude_cm());
+        Serial.print(location.lon);
+
+        location.alt = (int32_t)(dev.fix.altitude_cm());
         Serial.print(", Altitude: ");
-        Serial.print(data);
-        LoRaPacketData[i++] = data >> 24;
-        LoRaPacketData[i++] = data >> 16;
-        LoRaPacketData[i++] = data >> 8;
-        LoRaPacketData[i++] = data;
-        data = (uint32_t)(0);
-        Serial.print(", Accuracy: ");
-        Serial.print(data);
-        LoRaPacketData[i++] = data >> 24;
-        LoRaPacketData[i++] = data >> 16;
-        LoRaPacketData[i++] = data >> 8;
-        LoRaPacketData[i++] = data;
+        Serial.print(location.alt);
+
+        lora.AppendParameter(LoraParameter(location, LoraParameter::Kind::gps));
+
         data = (uint8_t)(dev.fix.satellites);
         Serial.print(", Satellites: ");
         Serial.print(data);
-        LoRaPacketData[i++] = data;
+        lora.AppendParameter(LoraParameter((uint8_t)data, LoraParameter::Kind::satellites));
+
         data = (uint16_t)(dev.fix.hdop);
         Serial.print(", HDOP: ");
         Serial.print(data);
-        LoRaPacketData[i++] = data >> 8;
-        LoRaPacketData[i++] = data;
+        lora.AppendParameter(LoraParameter((uint16_t)data, LoraParameter::Kind::hdop));
+
         data = (int32_t)((dev.fix.speed_kph() * 100));
-        //data = (int32_t)(0);
         Serial.print(", Speed: ");
         Serial.print(data);
-        LoRaPacketData[i++] = data >> 24;
-        LoRaPacketData[i++] = data >> 16;
-        LoRaPacketData[i++] = data >> 8;
-        LoRaPacketData[i++] = data;
-        LoRaPacketDataSize = i;
+        lora.AppendParameter(LoraParameter((uint32_t)data, LoraParameter::Kind::speed));
+
+        data = (int32_t)(float(analogRead(RAK7200_S76G_ADC_VBAT)) / 4096 * 3.30 / 0.6 * 10.0 * 1000.0); // Voltage in mV
         Serial.print(", V: ");
-        Serial.print(float(analogRead(RAK7200_S76G_ADC_VBAT)) / 4096 * 3.30 / 0.6 * 10.0);
+        Serial.print(data);
+        lora.AppendParameter(LoraParameter((uint32_t)data, LoraParameter::Kind::voltage));
         Serial.println();
 
-    dev.sendLora(LoRaPacketData, LoRaPacketDataSize);
+    // dev.sendLora(LoRaPacketData, LoRaPacketDataSize);
   }
 
 }

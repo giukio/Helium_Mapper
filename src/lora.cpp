@@ -1,5 +1,5 @@
 /*!
- *  @file main.cpp
+ *  @file lora.cpp
  *
  *  BSD 3-Clause License
  *  Copyright (c) 2021, Giulio Berti
@@ -31,41 +31,55 @@
  *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *  
  */
-
-#include <devices.h>
-#include <vector>
+#include <lora.h>
 
 uint64_t TX_INTERVAL = 15; // Transmit every 15 seconds
 
-class LoraParameter
-{
-private:
-    uint16_t _kind;
-    std::vector<uint8_t> _data;
-public:
-    LoraParameter(uint16_t kind);
-    ~LoraParameter();
-};
+Lora lora;
 
-LoraParameter::LoraParameter(uint16_t kind)
-{
+LoraParameter::LoraParameter(uint8_t par, Kind kind){
     _kind = kind;
+    _data = std::vector<uint8_t>{ par };
 }
+
+LoraParameter::LoraParameter(uint16_t par, Kind kind){
+    _kind = kind;
+    _data = std::vector<uint8_t>{ 
+        static_cast<uint8_t>(par >> 8), 
+        static_cast<uint8_t>(par) };
+}
+
+LoraParameter::LoraParameter(uint32_t par, Kind kind){
+    _kind = kind;
+    _data = std::vector<uint8_t>{ 
+        static_cast<uint8_t>(par >> 24), 
+        static_cast<uint8_t>(par >> 16), 
+        static_cast<uint8_t>(par >> 8), 
+        static_cast<uint8_t>(par) };
+}
+
+LoraParameter::LoraParameter(LoraParameter::gps par, Kind kind){
+    _kind = kind;
+    _data = std::vector<uint8_t>{ 
+        static_cast<uint8_t>(par.lat >> 24), 
+        static_cast<uint8_t>(par.lat >> 16), 
+        static_cast<uint8_t>(par.lat >> 8), 
+        static_cast<uint8_t>(par.lat),
+        static_cast<uint8_t>(par.lon >> 24), 
+        static_cast<uint8_t>(par.lon >> 16), 
+        static_cast<uint8_t>(par.lon >> 8), 
+        static_cast<uint8_t>(par.lon),
+        static_cast<uint8_t>(par.alt >> 24), 
+        static_cast<uint8_t>(par.alt >> 16), 
+        static_cast<uint8_t>(par.alt >> 8), 
+        static_cast<uint8_t>(par.alt) };
+
+}
+
 
 LoraParameter::~LoraParameter()
 {
 }
-
-class Lora
-{
-private:
-    std::vector<uint8_t> _packet; 
-    std::vector<LoraParameter> _parameters;
-public:
-    Lora(/* args */);
-    void AppendParameter(LoraParameter p);
-    ~Lora();
-};
 
 Lora::Lora(/* args */)
 {
@@ -73,6 +87,18 @@ Lora::Lora(/* args */)
 
 void Lora::AppendParameter(LoraParameter p){
     _parameters.push_back(p);
+}
+
+void Lora::UpdateOrAppendParameter(LoraParameter p){
+    _parameters.push_back(p);
+}
+
+osjob_t* Lora::getSendjob(){
+    return &_sendjob;
+}
+
+void Lora::setTxData(){
+    LMIC_setTxData2(1, &_packet.at(0), _packet.size(), 0);
 }
 
 Lora::~Lora()
@@ -161,7 +187,7 @@ void onEvent(ev_t ev) {
                 Serial.println(F(" bytes of payload"));
             }
             // Schedule next transmission
-            os_setTimedCallback(dev.getSendjob(), os_getTime() + sec2osticks(TX_INTERVAL), do_send);
+            os_setTimedCallback(lora.getSendjob(), os_getTime() + sec2osticks(TX_INTERVAL), do_send);
             break;
         case EV_LOST_TSYNC:
             Serial.println(F("EV_LOST_TSYNC"));
@@ -222,8 +248,7 @@ void do_send(osjob_t *j) {
         Serial.println(F("OP_TXRXPEND, not sending"));
     }
     else {
-        LMIC_setTxData2(1, dev.getLoRaPacketData(), dev.getLoRaPacketDataSize(), 0);
-        dev.resetLoRaPacketDataSize();
+        lora.setTxData();
         Serial.println(F("Packet queued"));
     }
     // Next TX is scheduled after TX_COMPLETE event.
@@ -250,5 +275,5 @@ void LmicInit(){
     Serial.println("Radio Initialized");
 
     // Start job (sending automatically starts OTAA too)
-    do_send(&_sendjob);
+    do_send(lora.getSendjob());
 }

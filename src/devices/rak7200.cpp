@@ -46,9 +46,6 @@ Rak7200::Rak7200(){
         Serial.println("ERROR: Couldn't Configure GNSS Hardware Serial");
         while(1);
     }
-    
-    _loRaPacketData[24] = {0};
-    _loRaPacketDataSize = 0;
 }
 
 void Rak7200::setConsole(){
@@ -206,8 +203,6 @@ void Rak7200::setLora(){
 
     Serial.print("RADIO  - ");
     Serial.println(_has_SX1276 ? "PASS" : "FAIL");
-
-    LmicInit();
 }
 
 // LMIC library expects pinmap as global constant
@@ -238,6 +233,4 @@ const lmic_pinmap lmic_pins = {
 //     _loRaPacketDataSize = 0;
 // }
 
-// osjob_t* Rak7200::getSendjob(){
-//     return &_sendjob;
-// }
+
