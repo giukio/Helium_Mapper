@@ -40,39 +40,38 @@
 
 void setup() {
   // put your setup code here, to run once:
+  pinMode(RAK7200_S76G_RED_LED, OUTPUT);
+  pinMode(RAK7200_S76G_GREEN_LED, OUTPUT);
+  pinMode(RAK7200_S76G_BLUE_LED, OUTPUT);
 
   dev.setConsole();
   Serial.println("\nHelium Mapper");
   setupAtCommands();
   dev.setGps();
   dev.setLora();
-  LMIC_init();
+  LmicInit();
+
+  digitalWrite(RAK7200_S76G_RED_LED, HIGH);
+  digitalWrite(RAK7200_S76G_GREEN_LED, HIGH);
+  digitalWrite(RAK7200_S76G_BLUE_LED, HIGH);
   Serial.println("Setup Complete.");
   Serial.flush();
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-  try
-  {
-    throw std::runtime_error("exception thrown.");
-  }
-  catch(const std::exception& e)
-  {
-    Serial.println(e.what());
-    Serial.flush();
-    delay(1000);
-  }
+
+  digitalToggle(RAK7200_S76G_RED_LED);
   readAtCommands();
   os_runloop_once();
-    dev.getGpsFix();
+  dev.getGpsFix();
+  int32_t data = 0;
+
     if (dev.fix.valid.location) {
       dev.fix.valid.location = false;
       digitalToggle(RAK7200_S76G_GREEN_LED);
 
       // Prepare upstream data transmission at the next possible time.
-        uint32_t i = 0;
-        int32_t data = 0;
         LoraParameter::gps location;
 
         location.lat = (int32_t)(dev.fix.latitudeL());
@@ -103,17 +102,11 @@ void loop() {
         Serial.print(", Speed: ");
         Serial.print(data);
         lora.UpdateOrAppendParameter(LoraParameter((uint32_t)data, LoraParameter::Kind::speed));
-
-        data = (int32_t)(float(analogRead(RAK7200_S76G_ADC_VBAT)) / 4096 * 3.30 / 0.6 * 10.0 * 1000.0); // Voltage in mV
-        Serial.print(", V: ");
-        Serial.print(data);
-        lora.UpdateOrAppendParameter(LoraParameter((uint32_t)data, LoraParameter::Kind::voltage));
         Serial.println();
-
-    // dev.sendLora(LoRaPacketData, LoRaPacketDataSize);
     }
-
-  
-
+  float voltage = (float(analogRead(RAK7200_S76G_ADC_VBAT)) / 4096 * 3.30 / 0.6 * 10.0);
+  // Serial.print(", V: ");
+  // Serial.print(voltage);
+  lora.UpdateOrAppendParameter(LoraParameter((uint32_t)(voltage * 1000.0), LoraParameter::Kind::voltage));
 
 }

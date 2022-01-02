@@ -101,6 +101,7 @@ public:
 
 void printHex2(unsigned v);
 void do_send(osjob_t *j);
+void LmicInit();
 
 // // ttn application function to decode uplink data.
 // // Decode decodes an array of bytes into an object.

@@ -94,6 +94,8 @@ Lora::Lora(/* args */)
 
 void Lora::AppendParameter(LoraParameter p){
     this->_parameters.push_back(p);
+    Serial.print("Added Lora Parameter: ");
+    Serial.println((uint16_t)p.GetKind(), HEX);
 }
 
 void Lora::UpdateOrAppendParameter(LoraParameter p){
@@ -120,6 +122,11 @@ void Lora::setTxData(){
     }
     
     LMIC_setTxData2(1, this->_packet.data(), this->_packet.size(), 0);
+    for (auto &&p : _packet)
+    {
+        Serial.print(p, HEX);
+    }
+    Serial.println();
 }
 
 Lora::~Lora()
