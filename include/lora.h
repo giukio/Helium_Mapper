@@ -70,6 +70,8 @@ public:
     LoraParameter(uint16_t par, Kind kind = Kind::unspecified);
     LoraParameter(uint32_t par, Kind kind = Kind::unspecified);
     LoraParameter(LoraParameter::gps par, Kind kind = Kind::unspecified);
+    Kind GetKind();
+    std::vector<uint8_t> GetData();
     ~LoraParameter();
 
 private:
@@ -89,6 +91,7 @@ private:
 
 public:
     Lora(/* args */);
+
     void AppendParameter(LoraParameter p);
     void UpdateOrAppendParameter(LoraParameter p);
     osjob_t* getSendjob();
