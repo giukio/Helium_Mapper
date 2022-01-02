@@ -35,50 +35,81 @@
 #include <Arduino.h>
 #include <at.h>
 #include <devices.h>
-
-
-
+#include <lora.h>
+#include <exception>
 
 void setup() {
   // put your setup code here, to run once:
+  pinMode(RAK7200_S76G_RED_LED, OUTPUT);
+  pinMode(RAK7200_S76G_GREEN_LED, OUTPUT);
+  pinMode(RAK7200_S76G_BLUE_LED, OUTPUT);
 
   dev.setConsole();
   Serial.println("\nHelium Mapper");
   setupAtCommands();
-  dev.setLora();
   dev.setGps();
+  dev.setLora();
+  LmicInit();
+
+  digitalWrite(RAK7200_S76G_RED_LED, HIGH);
+  digitalWrite(RAK7200_S76G_GREEN_LED, HIGH);
+  digitalWrite(RAK7200_S76G_BLUE_LED, HIGH);
+  Serial.println("Setup Complete.");
+  Serial.flush();
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
+
+  digitalToggle(RAK7200_S76G_RED_LED);
   readAtCommands();
-  gps_fix fix = dev.getGpsFix();
-  if (fix.valid.location) {
-    fix.valid.location = false;
-    digitalToggle(RAK7200_S76G_GREEN_LED);
+  os_runloop_once();
+  dev.getGpsFix();
+  int32_t data = 0;
 
-    // Prepare upstream data transmission at the next possible time.
-    Serial.print("Location: ");
-    Serial.print(fix.latitudeL());
+    if (dev.fix.valid.location) {
+      dev.fix.valid.location = false;
+      digitalToggle(RAK7200_S76G_GREEN_LED);
 
-    Serial.print(", ");
-    Serial.print(fix.longitudeL());
+      // Prepare upstream data transmission at the next possible time.
+        LoraParameter::gps location;
 
-    Serial.print(", Altitude: ");
-    Serial.print(fix.altitude_cm());
+        location.lat = (int32_t)(dev.fix.latitudeL());
+        Serial.print("Location: ");
+        Serial.print(location.lat);
 
-    Serial.print(", Satellites: ");
-    Serial.print(fix.satellites);
+        location.lon = (int32_t)(dev.fix.longitudeL());
+        Serial.print(", ");
+        Serial.print(location.lon);
 
-    Serial.print(", HDOP: ");
-    Serial.print(fix.hdop);
+        location.alt = (int32_t)(dev.fix.altitude_cm());
+        Serial.print(", Altitude: ");
+        Serial.print(location.alt);
 
-    Serial.print(", Speed: ");
-    Serial.print(fix.speed_kph());
-  }
+        lora.UpdateOrAppendParameter(LoraParameter(location, LoraParameter::Kind::gps));
 
-  Serial.print(", V: ");
-  Serial.print(float(analogRead(RAK7200_S76G_ADC_VBAT)) / 4096 * 3.30 / 0.6 * 10.0);
-  Serial.println();
-  delay(1000);
+        data = (uint8_t)(dev.fix.satellites);
+        Serial.print(", Satellites: ");
+        Serial.print(data);
+        lora.UpdateOrAppendParameter(LoraParameter((uint8_t)data, LoraParameter::Kind::satellites));
+
+        data = (uint16_t)(dev.fix.hdop);
+        Serial.print(", HDOP: ");
+        Serial.print(data);
+        lora.UpdateOrAppendParameter(LoraParameter((uint16_t)data, LoraParameter::Kind::hdop));
+
+        data = (int32_t)((dev.fix.speed_kph() * 100));
+        Serial.print(", Speed: ");
+        Serial.print(data);
+        lora.UpdateOrAppendParameter(LoraParameter((uint16_t)data, LoraParameter::Kind::speed));
+        Serial.println();
+
+        Serial.print("Lora Packet: 0x");
+        lora.PrintPacket();
+    }
+  float voltage = (float(analogRead(RAK7200_S76G_ADC_VBAT)) / 4096 * 3.30 / 0.6 * 10.0);
+  // Serial.print(", V: ");
+  // Serial.print(voltage);
+  lora.UpdateOrAppendParameter(LoraParameter((uint16_t)(voltage * 1000.0), LoraParameter::Kind::voltage));
+
 }

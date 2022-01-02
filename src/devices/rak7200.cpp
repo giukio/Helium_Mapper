@@ -37,15 +37,7 @@
 #include <devices\rak7200.h>
 #include <SPI.h>
 
-const lmic_pinmap lmic_pins = {
-        .nss = S7xx_SX127x_NSS,
-        .rxtx = S7xx_SX127x_ANTENNA_SWITCH_RXTX,
-        .rst = S7xx_SX127x_NRESET,
-        .dio = {S7xx_SX127x_DIO0, S7xx_SX127x_DIO1, S7xx_SX127x_DIO2},
-        .rxtx_rx_active = 1,
-        .rssi_cal = 10,
-        .spi_freq = 1000000
-};
+
 
 Rak7200::Rak7200(){
     _GNSS = new HardwareSerial(S7xG_CXD5603_UART_RX, S7xG_CXD5603_UART_TX);
@@ -54,9 +46,6 @@ Rak7200::Rak7200(){
         Serial.println("ERROR: Couldn't Configure GNSS Hardware Serial");
         while(1);
     }
-    
-    _loRaPacketData[24] = {0};
-    _loRaPacketDataSize = 0;
 }
 
 void Rak7200::setConsole(){
@@ -166,6 +155,10 @@ void Rak7200::setGps(){
 
     Serial.print("GNSS   - ");
     Serial.println(Rak7200::GNSS_probe() ? "PASS" : "FAIL");  
+
+    _GNSS->begin(115200);
+    while (!_GNSS);
+    Serial.println("GNSS UART Initialized");
 }
 
 gps_fix Rak7200::getGpsFix(){
@@ -210,43 +203,34 @@ void Rak7200::setLora(){
 
     Serial.print("RADIO  - ");
     Serial.println(_has_SX1276 ? "PASS" : "FAIL");
-
-    LmicInit();
 }
 
-void Rak7200::LmicInit(){
-    // LMIC init
-    os_init();
-    // Reset the MAC state. Session and pending data transfers will be discarded.
-    LMIC_reset();
+// LMIC library expects pinmap as global constant
+const lmic_pinmap lmic_pins = {
+        .nss = S7xx_SX127x_NSS,
+        .rxtx = S7xx_SX127x_ANTENNA_SWITCH_RXTX,
+        .rst = S7xx_SX127x_NRESET,
+        .dio = {S7xx_SX127x_DIO0, S7xx_SX127x_DIO1, S7xx_SX127x_DIO2},
+        .rxtx_rx_active = 1,
+        .rssi_cal = 10,
+        .spi_freq = 1000000
+};
 
-    // allow much more clock error than the X/1000 default. See:
-    // https://github.com/mcci-catena/arduino-lorawan/issues/74#issuecomment-462171974
-    // https://github.com/mcci-catena/arduino-lmic/commit/42da75b56#diff-16d75524a9920f5d043fe731a27cf85aL633
-    // the X/1000 means an error rate of 0.1%; the above issue discusses using values up to 10%.
-    // so, values from 10 (10% error, the most lax) to 1000 (0.1% error, the most strict) can be used.
-    //LMIC_setClockError(1 * MAX_CLOCK_ERROR / 40);
-    LMIC_setClockError(MAX_CLOCK_ERROR *20 / 100);
+// void Rak7200::sendLora(uint8_t LoRaPacketData[], uint8_t LoRaPacketDataSize){
+//     memcpy_P(_loRaPacketData, LoRaPacketData, LoRaPacketDataSize);
+//     _loRaPacketDataSize = LoRaPacketDataSize;
+// }
 
-    LMIC_setLinkCheckMode(0);
-    LMIC_setDrTxpow(DR_SF12, 14);
-    //LMIC_setupBand(BAND_MILLI,13,10);
-    //LMIC_selectSubBand(1);
-    Serial.println("Radio Initialized");
 
-    // Start job (sending automatically starts OTAA too)
-    Rak7200::do_send(&_sendjob);
-}
+// uint8_t* Rak7200::getLoRaPacketData(){
+//     return _loRaPacketData;
+// }
+// uint8_t  Rak7200::getLoRaPacketDataSize(){
+//     return _loRaPacketDataSize;
+// }
 
-void Rak7200::do_send(osjob_t *j) {
-    // Check if there is not a current TX/RX job running
-    if (LMIC.opmode & OP_TXRXPEND) {
-        Serial.println(F("OP_TXRXPEND, not sending"));
-    }
-    else {
-        LMIC_setTxData2(1, _loRaPacketData, _loRaPacketDataSize, 0);
-        _loRaPacketDataSize = 0;
-        Serial.println(F("Packet queued"));
-    }
-    // Next TX is scheduled after TX_COMPLETE event.
-}
+// void  Rak7200::resetLoRaPacketDataSize(){
+//     _loRaPacketDataSize = 0;
+// }
+
+

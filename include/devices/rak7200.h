@@ -94,14 +94,6 @@ class Rak7200: public Device {
         HardwareSerial* _GNSS = NULL;
 
         bool _has_SX1276;
-        void LmicInit();
-        void do_send(osjob_t *j);
-        osjob_t _sendjob;
-        uint8_t _loRaPacketData[24];
-        uint8_t _loRaPacketDataSize;
-
-        
-
 };
 
 #endif
