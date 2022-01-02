@@ -46,6 +46,8 @@ Rak7200::Rak7200(){
         Serial.println("ERROR: Couldn't Configure GNSS Hardware Serial");
         while(1);
     }
+
+    _lis = new Adafruit_LIS3DH(new TwoWire(S7xx_I2C_SDA, S7xx_I2C_SCL));
 }
 
 void Rak7200::setConsole(){
@@ -216,21 +218,49 @@ const lmic_pinmap lmic_pins = {
         .spi_freq = 1000000
 };
 
-// void Rak7200::sendLora(uint8_t LoRaPacketData[], uint8_t LoRaPacketDataSize){
-//     memcpy_P(_loRaPacketData, LoRaPacketData, LoRaPacketDataSize);
-//     _loRaPacketDataSize = LoRaPacketDataSize;
-// }
 
+void Rak7200::setSensors(){
+    this->setLis3dh();
+}
 
-// uint8_t* Rak7200::getLoRaPacketData(){
-//     return _loRaPacketData;
-// }
-// uint8_t  Rak7200::getLoRaPacketDataSize(){
-//     return _loRaPacketDataSize;
-// }
+void Rak7200::setLis3dh(){
+    if (this->_lis->begin(0x19) == false){
+        Serial.println("Couldnt Start LIS3DH Accelerometer");
+        while (1)
+        {
+            yield();
+        }
+    }
+    Serial.println("LIS3DH found!");
+    
+    this->_lis->setRange(LIS3DH_RANGE_2_G);   // 2, 4, 8 or 16 G!
+    
+    Serial.print("Range = "); Serial.print(2 << this->_lis->getRange());  
+    Serial.println("G");
 
-// void  Rak7200::resetLoRaPacketDataSize(){
-//     _loRaPacketDataSize = 0;
-// }
+    // this->_lis->setDataRate(LIS3DH_DATARATE_50_HZ);
+    Serial.print("Data rate set to: ");
+    switch (this->_lis->getDataRate()) {
+        case LIS3DH_DATARATE_1_HZ: Serial.println("1 Hz"); break;
+        case LIS3DH_DATARATE_10_HZ: Serial.println("10 Hz"); break;
+        case LIS3DH_DATARATE_25_HZ: Serial.println("25 Hz"); break;
+        case LIS3DH_DATARATE_50_HZ: Serial.println("50 Hz"); break;
+        case LIS3DH_DATARATE_100_HZ: Serial.println("100 Hz"); break;
+        case LIS3DH_DATARATE_200_HZ: Serial.println("200 Hz"); break;
+        case LIS3DH_DATARATE_400_HZ: Serial.println("400 Hz"); break;
 
+        case LIS3DH_DATARATE_POWERDOWN: Serial.println("Powered Down"); break;
+        case LIS3DH_DATARATE_LOWPOWER_5KHZ: Serial.println("5 Khz Low Power"); break;
+        case LIS3DH_DATARATE_LOWPOWER_1K6HZ: Serial.println("16 Khz Low Power"); break;
+    }
 
+    // 0 = turn off click detection & interrupt
+    // 1 = single click only interrupt output
+    // 2 = double click only interrupt output, detect single click
+    // Adjust threshhold, higher numbers are less sensitive
+    this->_lis->setClick(2, 40);
+}
+
+int8_t Rak7200::getTemperature(){
+    return this->_lis->readTemperature(13);
+}
