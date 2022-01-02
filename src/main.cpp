@@ -101,12 +101,15 @@ void loop() {
         data = (int32_t)((dev.fix.speed_kph() * 100));
         Serial.print(", Speed: ");
         Serial.print(data);
-        lora.UpdateOrAppendParameter(LoraParameter((uint32_t)data, LoraParameter::Kind::speed));
+        lora.UpdateOrAppendParameter(LoraParameter((uint16_t)data, LoraParameter::Kind::speed));
         Serial.println();
+
+        Serial.print("Lora Packet: 0x");
+        lora.PrintPacket();
     }
   float voltage = (float(analogRead(RAK7200_S76G_ADC_VBAT)) / 4096 * 3.30 / 0.6 * 10.0);
   // Serial.print(", V: ");
   // Serial.print(voltage);
-  lora.UpdateOrAppendParameter(LoraParameter((uint32_t)(voltage * 1000.0), LoraParameter::Kind::voltage));
+  lora.UpdateOrAppendParameter(LoraParameter((uint16_t)(voltage * 1000.0), LoraParameter::Kind::voltage));
 
 }

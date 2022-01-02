@@ -115,16 +115,21 @@ osjob_t* Lora::getSendjob(){
 }
 
 void Lora::setTxData(){
-    _packet.clear();
+    this->_packet.clear();
     for (auto &&p : this->_parameters)
     {
-        _packet.insert(_packet.end(), p.GetData().begin(), p.GetData().end());
+        this->_packet.insert(this->_packet.end(), p.GetData().begin(), p.GetData().end());
     }
     
     LMIC_setTxData2(1, this->_packet.data(), this->_packet.size(), 0);
-    for (auto &&p : _packet)
+    this->PrintPacket();
+}
+
+void Lora::PrintPacket(){
+    for (auto &&p : this->_packet)
     {
-        Serial.print(p, HEX);
+        // Serial.print(p, HEX);
+        printHex2(p);
     }
     Serial.println();
 }

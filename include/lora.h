@@ -96,6 +96,7 @@ public:
     void UpdateOrAppendParameter(LoraParameter p);
     osjob_t* getSendjob();
     void setTxData();
+    void PrintPacket();
     ~Lora();
 };
 
