@@ -241,7 +241,11 @@ void onEvent(ev_t ev) {
                 Serial.println(F(" bytes of payload"));
             }
             // Schedule next transmission
-            os_setTimedCallback(lora.getSendjob(), os_getTime() + sec2osticks(TX_INTERVAL), do_send);
+            if (dev.isMoving())
+            {
+                os_setTimedCallback(lora.getSendjob(), os_getTime() + sec2osticks(TX_INTERVAL), do_send);
+            }
+            
             break;
         case EV_LOST_TSYNC:
             Serial.println(F("EV_LOST_TSYNC"));

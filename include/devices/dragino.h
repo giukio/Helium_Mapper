@@ -46,6 +46,7 @@ class Dragino: public Device {
         void setLora();
         void setSensors();
         bool isMoving();
+        bool isMotionJustStarted();
 };
 
 #endif

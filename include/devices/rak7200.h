@@ -98,6 +98,7 @@ class Rak7200: public Device {
         int8_t getTemperature();
         std::vector<float> getAcceleration();
         bool isMoving();
+        bool isMotionJustStarted();
 
     private:
         bool GNSS_probe();

@@ -47,6 +47,7 @@ class Device {
         virtual void setLora() = 0;
         virtual void setSensors() = 0;
         virtual bool isMoving() = 0;
+        virtual bool isMotionJustStarted() = 0;
         gps_fix fix;
     protected:
         NMEAGPS gps;

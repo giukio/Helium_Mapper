@@ -278,11 +278,28 @@ void Rak7200::Lis3dhInt1_ISR(){
 }
 
 void Rak7200::deviceMoving(){
-        this->Lis3dhInt1Flag = true;
+        if (this->isMoving() == false)
+        {
+            this->Lis3dhInt1Flag = true;
+            // Device just started moving
+            Serial.print(_lastMotionMillis); Serial.println(": Motion detected.");
+        }
+        
         this->_lastMotionMillis = millis();
-        Serial.print(_lastMotionMillis); Serial.println(": Motion detected.");
 }
 
 bool Rak7200::isMoving(){
-    return (millis() - this->_lastMotionMillis) < 5000;
+    return (millis() - this->_lastMotionMillis) < 30000;
+}
+
+bool Rak7200::isMotionJustStarted(){
+    if (this->Lis3dhInt1Flag)
+    {
+        this->Lis3dhInt1Flag = false;
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
