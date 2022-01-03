@@ -46,6 +46,8 @@ Rak7200::Rak7200(){
         Serial.println("ERROR: Couldn't Configure GNSS Hardware Serial");
         while(1);
     }
+
+    _lis = new Adafruit_LIS3DH(new TwoWire(S7xx_I2C_SDA, S7xx_I2C_SCL));
 }
 
 void Rak7200::setConsole(){
@@ -216,3 +218,55 @@ const lmic_pinmap lmic_pins = {
         .spi_freq = 1000000
 };
 
+void Rak7200::setSensors(){
+    this->setLis3dh();
+}
+
+void Rak7200::setLis3dh(){
+    if (this->_lis->begin(0x19) == false){
+        Serial.println("Couldnt Start LIS3DH Accelerometer");
+        while (1)
+        {
+            yield();
+        }
+    }
+    Serial.println("LIS3DH found!");
+
+    this->_lis->enableDRDY(false,1);    // Leave INT1 PIN free
+    
+    this->_lis->setRange(LIS3DH_RANGE_2_G);   // 2, 4, 8 or 16 G!
+    
+    Serial.print("Range = "); Serial.print(2 << this->_lis->getRange());  
+    Serial.println("G");
+
+    // this->_lis->setDataRate(LIS3DH_DATARATE_50_HZ);
+    Serial.print("Data rate set to: ");
+    switch (this->_lis->getDataRate()) {
+        case LIS3DH_DATARATE_1_HZ: Serial.println("1 Hz"); break;
+        case LIS3DH_DATARATE_10_HZ: Serial.println("10 Hz"); break;
+        case LIS3DH_DATARATE_25_HZ: Serial.println("25 Hz"); break;
+        case LIS3DH_DATARATE_50_HZ: Serial.println("50 Hz"); break;
+        case LIS3DH_DATARATE_100_HZ: Serial.println("100 Hz"); break;
+        case LIS3DH_DATARATE_200_HZ: Serial.println("200 Hz"); break;
+        case LIS3DH_DATARATE_400_HZ: Serial.println("400 Hz"); break;
+
+        case LIS3DH_DATARATE_POWERDOWN: Serial.println("Powered Down"); break;
+        case LIS3DH_DATARATE_LOWPOWER_5KHZ: Serial.println("5 Khz Low Power"); break;
+        case LIS3DH_DATARATE_LOWPOWER_1K6HZ: Serial.println("16 Khz Low Power"); break;
+    }
+
+    // 0 = turn off click detection & interrupt
+    // 1 = single click only interrupt output
+    // 2 = double click only interrupt output, detect single click
+    // Adjust threshhold, higher numbers are less sensitive
+    this->_lis->setClick(2, 40);
+}
+
+int8_t Rak7200::getTemperature(){
+    return this->_lis->readTemperature(13);
+}
+
+std::vector<float> Rak7200::getAcceleration(){
+    this->_lis->read();
+    return std::vector<float>{ this->_lis->x_g, this->_lis->y_g, this->_lis->z_g };
+}

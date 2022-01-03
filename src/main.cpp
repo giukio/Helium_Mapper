@@ -36,7 +36,7 @@
 #include <at.h>
 #include <devices.h>
 #include <lora.h>
-#include <exception>
+
 
 void setup() {
   // put your setup code here, to run once:
@@ -50,6 +50,7 @@ void setup() {
   dev.setGps();
   dev.setLora();
   LmicInit();
+  dev.setSensors();
 
   digitalWrite(RAK7200_S76G_RED_LED, HIGH);
   digitalWrite(RAK7200_S76G_GREEN_LED, HIGH);
@@ -102,15 +103,31 @@ void loop() {
         Serial.print(", Speed: ");
         Serial.print(data);
         lora.UpdateOrAppendParameter(LoraParameter((uint16_t)data, LoraParameter::Kind::speed));
+
+        data = (int8_t)(dev.getTemperature());
+        Serial.print(", Temp: ");
+        Serial.print(data);
+        lora.UpdateOrAppendParameter(LoraParameter((uint8_t)data, LoraParameter::Kind::temperature));
+
+        std::vector<float> acc_g = dev.getAcceleration();
+        std::vector<int16_t> acc = {
+          (int16_t)(acc_g.at(0)*1000),
+          (int16_t)(acc_g.at(1)*1000), 
+          (int16_t)(acc_g.at(2)*1000)};
+        Serial.print(", Acc_x: "); Serial.print(acc.at(0));
+        Serial.print(", Acc_y: "); Serial.print(acc.at(1));
+        Serial.print(", Acc_z: "); Serial.print(acc.at(2));
+
+
+        float voltage = (float(analogRead(RAK7200_S76G_ADC_VBAT)) / 4096 * 3.30 / 0.6 * 10.0);
+        Serial.print(", V: ");
+        Serial.print(voltage);
+        lora.UpdateOrAppendParameter(LoraParameter((uint16_t)(voltage * 1000.0), LoraParameter::Kind::voltage));
         Serial.println();
 
         lora.BuildPacket();
         Serial.print("Lora Packet: 0x");
         lora.PrintPacket();
     }
-  float voltage = (float(analogRead(RAK7200_S76G_ADC_VBAT)) / 4096 * 3.30 / 0.6 * 10.0);
-  // Serial.print(", V: ");
-  // Serial.print(voltage);
-  lora.UpdateOrAppendParameter(LoraParameter((uint16_t)(voltage * 1000.0), LoraParameter::Kind::voltage));
 
 }

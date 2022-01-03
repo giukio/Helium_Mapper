@@ -35,6 +35,10 @@
 #define RAK7200_H
 
 #include <deviceBase.h>
+#include <Adafruit_LIS3DH.h>
+#include <vector>
+
+#define SX1276_RegVersion                 0x42
 
 // RAK7200 S76G GPIOs
 #define RAK7200_S76G_BLUE_LED             PA8  // Blue LED (D2) active low
@@ -76,7 +80,9 @@
 #define S7xx_SX127x_DIO5                  PA15 // unused
 #define S7xx_SX127x_ANTENNA_SWITCH_RXTX   PA1  // Radio Antenna Switch 1:RX, 0:TX
 
-#define SX1276_RegVersion                 0x42
+// AcSiP S7xx I2C1
+#define S7xx_I2C_SCL                      PB6  // I2C1
+#define S7xx_I2C_SDA                      PB7  // I2C1
 
 
 extern class Rak7200 dev;
@@ -88,12 +94,17 @@ class Rak7200: public Device {
         void setGps();
         gps_fix getGpsFix();
         void setLora();
+        void setSensors();
+        int8_t getTemperature();
+        std::vector<float> getAcceleration();
 
     private:
         bool GNSS_probe();
         HardwareSerial* _GNSS = NULL;
-
         bool _has_SX1276;
+
+        Adafruit_LIS3DH* _lis = NULL;
+        void setLis3dh();
 };
 
 #endif
