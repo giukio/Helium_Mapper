@@ -70,6 +70,7 @@ public:
     LoraParameter(uint16_t par, Kind kind = Kind::unspecified);
     LoraParameter(uint32_t par, Kind kind = Kind::unspecified);
     LoraParameter(LoraParameter::gps par, Kind kind = Kind::unspecified);
+    LoraParameter(std::vector<uint16_t> par, Kind kind = Kind::unspecified);
     Kind GetKind();
     std::vector<uint8_t> GetData();
     ~LoraParameter();
@@ -77,9 +78,6 @@ public:
 private:
     Kind _kind;
     std::vector<uint8_t> _data;
-
-    // template <typename var>
-    // std::vector<uint8_t> VarToBytes(var &data);
 };
 
 class Lora
@@ -96,6 +94,7 @@ public:
     void UpdateOrAppendParameter(LoraParameter p);
     osjob_t* getSendjob();
     void setTxData();
+    void BuildPacket();
     void PrintPacket();
     ~Lora();
 };

@@ -75,6 +75,15 @@ LoraParameter::LoraParameter(LoraParameter::gps par, Kind kind){
         static_cast<uint8_t>(par.alt) };
 
 }
+LoraParameter::LoraParameter(std::vector<uint16_t> parVec, Kind kind){
+    _kind = kind;
+    _data.clear();
+    for (auto &&par : parVec)
+    {
+        _data.push_back(static_cast<uint8_t>(par >> 8));
+        _data.push_back(static_cast<uint8_t>(par));
+    }
+}
 
 LoraParameter::Kind LoraParameter::GetKind(){
     return this->_kind;
@@ -115,14 +124,17 @@ osjob_t* Lora::getSendjob(){
 }
 
 void Lora::setTxData(){
+    this->BuildPacket();
+    LMIC_setTxData2(1, this->_packet.data(), this->_packet.size(), 0);
+    this->PrintPacket();
+}
+
+void Lora::BuildPacket(){
     this->_packet.clear();
     for (auto &&p : this->_parameters)
     {
         this->_packet.insert(this->_packet.end(), p.GetData().begin(), p.GetData().end());
     }
-    
-    LMIC_setTxData2(1, this->_packet.data(), this->_packet.size(), 0);
-    this->PrintPacket();
 }
 
 void Lora::PrintPacket(){

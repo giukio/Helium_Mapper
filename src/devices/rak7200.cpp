@@ -216,21 +216,3 @@ const lmic_pinmap lmic_pins = {
         .spi_freq = 1000000
 };
 
-// void Rak7200::sendLora(uint8_t LoRaPacketData[], uint8_t LoRaPacketDataSize){
-//     memcpy_P(_loRaPacketData, LoRaPacketData, LoRaPacketDataSize);
-//     _loRaPacketDataSize = LoRaPacketDataSize;
-// }
-
-
-// uint8_t* Rak7200::getLoRaPacketData(){
-//     return _loRaPacketData;
-// }
-// uint8_t  Rak7200::getLoRaPacketDataSize(){
-//     return _loRaPacketDataSize;
-// }
-
-// void  Rak7200::resetLoRaPacketDataSize(){
-//     _loRaPacketDataSize = 0;
-// }
-
-

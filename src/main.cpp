@@ -104,6 +104,7 @@ void loop() {
         lora.UpdateOrAppendParameter(LoraParameter((uint16_t)data, LoraParameter::Kind::speed));
         Serial.println();
 
+        lora.BuildPacket();
         Serial.print("Lora Packet: 0x");
         lora.PrintPacket();
     }
