@@ -104,7 +104,9 @@ Lora::Lora(/* args */)
 void Lora::AppendParameter(LoraParameter p){
     this->_parameters.push_back(p);
     Serial.print("Added Lora Parameter: ");
-    Serial.println((uint16_t)p.GetKind(), HEX);
+    Serial.print((uint16_t)p.GetKind(), HEX);
+    Serial.print(" of size: ");
+    Serial.println(p.GetData().size());
 }
 
 void Lora::UpdateOrAppendParameter(LoraParameter p){
@@ -131,16 +133,23 @@ void Lora::setTxData(){
 
 void Lora::BuildPacket(){
     this->_packet.clear();
+    // Serial.print("BuildPacket: packet length "); Serial.print(this->_packet.size()); Serial.println(" bytes.");
+    // Serial.print("BuildPacket: there are "); Serial.print(this->_parameters.size()); Serial.println(" parameters.");
     for (auto &&p : this->_parameters)
     {
-        this->_packet.insert(this->_packet.end(), p.GetData().begin(), p.GetData().end());
+        std::vector<uint8_t> kind = std::vector<uint8_t>{ 
+            static_cast<uint8_t>((uint16_t)p.GetKind() >> 8), 
+            static_cast<uint8_t>((uint16_t)p.GetKind()) };
+        this->_packet.insert(this->_packet.end(), kind.begin(), kind.end());
+        std::vector<uint8_t> data = p.GetData();
+        this->_packet.insert(this->_packet.end(), data.begin(), data.end());
     }
+    // Serial.print("BuildPacket: packet length "); Serial.print(this->_packet.size()); Serial.println(" bytes.");
 }
 
 void Lora::PrintPacket(){
     for (auto &&p : this->_packet)
     {
-        // Serial.print(p, HEX);
         printHex2(p);
     }
     Serial.println();
