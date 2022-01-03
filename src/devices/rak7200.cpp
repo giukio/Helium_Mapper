@@ -232,6 +232,8 @@ void Rak7200::setLis3dh(){
         }
     }
     Serial.println("LIS3DH found!");
+
+    this->_lis->enableDRDY(false,1);    // Leave INT1 PIN free
     
     this->_lis->setRange(LIS3DH_RANGE_2_G);   // 2, 4, 8 or 16 G!
     
@@ -263,4 +265,9 @@ void Rak7200::setLis3dh(){
 
 int8_t Rak7200::getTemperature(){
     return this->_lis->readTemperature(13);
+}
+
+std::vector<float> Rak7200::getAcceleration(){
+    this->_lis->read();
+    return std::vector<float>{ this->_lis->x_g, this->_lis->y_g, this->_lis->z_g };
 }

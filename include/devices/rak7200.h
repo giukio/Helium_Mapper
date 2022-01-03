@@ -36,6 +36,7 @@
 
 #include <deviceBase.h>
 #include <Adafruit_LIS3DH.h>
+#include <vector>
 
 #define SX1276_RegVersion                 0x42
 
@@ -95,6 +96,7 @@ class Rak7200: public Device {
         void setLora();
         void setSensors();
         int8_t getTemperature();
+        std::vector<float> getAcceleration();
 
     private:
         bool GNSS_probe();
