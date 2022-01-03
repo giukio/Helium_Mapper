@@ -62,72 +62,77 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
 
-  digitalToggle(RAK7200_S76G_RED_LED);
   readAtCommands();
   os_runloop_once();
   dev.getGpsFix();
-  int32_t data = 0;
+  static uint32_t lastSesorLoop;
+  if ((millis() - lastSesorLoop) > 1000){
+    lastSesorLoop = millis();
+    digitalToggle(RAK7200_S76G_RED_LED);
+
+    int32_t data = 0;
 
     if (dev.fix.valid.location) {
       dev.fix.valid.location = false;
       digitalToggle(RAK7200_S76G_GREEN_LED);
 
       // Prepare upstream data transmission at the next possible time.
-        LoraParameter::gps location;
+      LoraParameter::gps location;
 
-        location.lat = (int32_t)(dev.fix.latitudeL());
-        Serial.print("Location: ");
-        Serial.print(location.lat);
+      location.lat = (int32_t)(dev.fix.latitudeL());
+      Serial.print("Location: ");
+      Serial.print(location.lat);
 
-        location.lon = (int32_t)(dev.fix.longitudeL());
-        Serial.print(", ");
-        Serial.print(location.lon);
+      location.lon = (int32_t)(dev.fix.longitudeL());
+      Serial.print(", ");
+      Serial.print(location.lon);
 
-        location.alt = (int32_t)(dev.fix.altitude_cm());
-        Serial.print(", Altitude: ");
-        Serial.print(location.alt);
+      location.alt = (int32_t)(dev.fix.altitude_cm());
+      Serial.print(", Altitude: ");
+      Serial.print(location.alt);
 
-        lora.UpdateOrAppendParameter(LoraParameter(location, LoraParameter::Kind::gps));
+      lora.UpdateOrAppendParameter(LoraParameter(location, LoraParameter::Kind::gps));
 
-        data = (uint8_t)(dev.fix.satellites);
-        Serial.print(", Satellites: ");
-        Serial.print(data);
-        lora.UpdateOrAppendParameter(LoraParameter((uint8_t)data, LoraParameter::Kind::satellites));
+      data = (uint8_t)(dev.fix.satellites);
+      Serial.print(", Satellites: ");
+      Serial.print(data);
+      lora.UpdateOrAppendParameter(LoraParameter((uint8_t)data, LoraParameter::Kind::satellites));
 
-        data = (uint16_t)(dev.fix.hdop);
-        Serial.print(", HDOP: ");
-        Serial.print(data);
-        lora.UpdateOrAppendParameter(LoraParameter((uint16_t)data, LoraParameter::Kind::hdop));
+      data = (uint16_t)(dev.fix.hdop);
+      Serial.print(", HDOP: ");
+      Serial.print(data);
+      lora.UpdateOrAppendParameter(LoraParameter((uint16_t)data, LoraParameter::Kind::hdop));
 
-        data = (int32_t)((dev.fix.speed_kph() * 100));
-        Serial.print(", Speed: ");
-        Serial.print(data);
-        lora.UpdateOrAppendParameter(LoraParameter((uint16_t)data, LoraParameter::Kind::speed));
-
-        data = (int8_t)(dev.getTemperature());
-        Serial.print(", Temp: ");
-        Serial.print(data);
-        lora.UpdateOrAppendParameter(LoraParameter((uint8_t)data, LoraParameter::Kind::temperature));
-
-        std::vector<float> acc_g = dev.getAcceleration();
-        std::vector<int16_t> acc = {
-          (int16_t)(acc_g.at(0)*1000),
-          (int16_t)(acc_g.at(1)*1000), 
-          (int16_t)(acc_g.at(2)*1000)};
-        Serial.print(", Acc_x: "); Serial.print(acc.at(0));
-        Serial.print(", Acc_y: "); Serial.print(acc.at(1));
-        Serial.print(", Acc_z: "); Serial.print(acc.at(2));
-
-
-        float voltage = (float(analogRead(RAK7200_S76G_ADC_VBAT)) / 4096 * 3.30 / 0.6 * 10.0);
-        Serial.print(", V: ");
-        Serial.print(voltage);
-        lora.UpdateOrAppendParameter(LoraParameter((uint16_t)(voltage * 1000.0), LoraParameter::Kind::voltage));
-        Serial.println();
-
-        lora.BuildPacket();
-        Serial.print("Lora Packet: 0x");
-        lora.PrintPacket();
+      data = (int32_t)((dev.fix.speed_kph() * 100));
+      Serial.print(", Speed: ");
+      Serial.print(data);
+      lora.UpdateOrAppendParameter(LoraParameter((uint16_t)data, LoraParameter::Kind::speed));
     }
 
+    data = (int16_t)(dev.getTemperature()*10);
+    Serial.print(", Temp: ");
+    Serial.print(data);
+    lora.UpdateOrAppendParameter(LoraParameter((uint16_t)data, LoraParameter::Kind::temperature));
+
+    std::vector<float> acc_g = dev.getAcceleration();
+    std::vector<uint16_t> acc = {
+      (uint16_t)(acc_g.at(0)*1000),
+      (uint16_t)(acc_g.at(1)*1000), 
+      (uint16_t)(acc_g.at(2)*1000)};
+    Serial.print(", Acc_x: "); Serial.print(acc.at(0));
+    Serial.print(", Acc_y: "); Serial.print(acc.at(1));
+    Serial.print(", Acc_z: "); Serial.print(acc.at(2));
+    lora.UpdateOrAppendParameter(LoraParameter(acc, LoraParameter::Kind::acceleration));
+
+    // pinMode(RAK7200_S76G_ADC_VBAT, INPUT_ANALOG);
+    float voltage = (float(analogRead(RAK7200_S76G_ADC_VBAT)) / 4096 * 3.30 / 0.6 * 10.0);
+    Serial.print(", V: ");
+    Serial.print(voltage);
+    lora.UpdateOrAppendParameter(LoraParameter((uint16_t)(voltage * 100.0), LoraParameter::Kind::voltage));
+    Serial.println();
+    Serial.flush();
+
+    lora.BuildPacket();
+    Serial.print("Lora Packet: 0x");  lora.PrintPacket();
+  }
 }
