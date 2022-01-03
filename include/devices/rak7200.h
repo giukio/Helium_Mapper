@@ -97,6 +97,7 @@ class Rak7200: public Device {
         void setSensors();
         int8_t getTemperature();
         std::vector<float> getAcceleration();
+        bool isMoving();
 
     private:
         bool GNSS_probe();
@@ -105,6 +106,10 @@ class Rak7200: public Device {
 
         Adafruit_LIS3DH* _lis = NULL;
         void setLis3dh();
+        static void Lis3dhInt1_ISR();
+        void deviceMoving();
+        volatile bool Lis3dhInt1Flag = false;
+        uint32_t _lastMotionMillis;
 };
 
 #endif

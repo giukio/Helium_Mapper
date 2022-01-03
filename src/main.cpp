@@ -129,6 +129,9 @@ void loop() {
     Serial.print(", V: ");
     Serial.print(voltage);
     lora.UpdateOrAppendParameter(LoraParameter((uint16_t)(voltage * 100.0), LoraParameter::Kind::voltage));
+
+    digitalWrite(RAK7200_S76G_BLUE_LED, dev.isMoving() ? LOW : HIGH);
+    
     Serial.println();
     Serial.flush();
 
