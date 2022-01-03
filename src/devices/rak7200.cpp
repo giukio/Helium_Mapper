@@ -218,7 +218,6 @@ const lmic_pinmap lmic_pins = {
         .spi_freq = 1000000
 };
 
-
 void Rak7200::setSensors(){
     this->setLis3dh();
 }

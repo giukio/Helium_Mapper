@@ -125,6 +125,7 @@ void loop() {
         lora.UpdateOrAppendParameter(LoraParameter((uint16_t)(voltage * 1000.0), LoraParameter::Kind::voltage));
         Serial.println();
 
+        lora.BuildPacket();
         Serial.print("Lora Packet: 0x");
         lora.PrintPacket();
     }
