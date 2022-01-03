@@ -72,6 +72,12 @@ void loop() {
 
     int32_t data = 0;
 
+    if (dev.isMotionJustStarted()){
+      // Start job (sending automatically starts OTAA too)
+      do_send(lora.getSendjob());   
+    }
+
+
     if (dev.fix.valid.location) {
       dev.fix.valid.location = false;
       digitalToggle(RAK7200_S76G_GREEN_LED);
@@ -122,13 +128,16 @@ void loop() {
     Serial.print(", Acc_x: "); Serial.print(acc.at(0));
     Serial.print(", Acc_y: "); Serial.print(acc.at(1));
     Serial.print(", Acc_z: "); Serial.print(acc.at(2));
-    lora.UpdateOrAppendParameter(LoraParameter(acc, LoraParameter::Kind::acceleration));
+    // lora.UpdateOrAppendParameter(LoraParameter(acc, LoraParameter::Kind::acceleration));
 
     // pinMode(RAK7200_S76G_ADC_VBAT, INPUT_ANALOG);
     float voltage = (float(analogRead(RAK7200_S76G_ADC_VBAT)) / 4096 * 3.30 / 0.6 * 10.0);
     Serial.print(", V: ");
     Serial.print(voltage);
     lora.UpdateOrAppendParameter(LoraParameter((uint16_t)(voltage * 100.0), LoraParameter::Kind::voltage));
+
+    digitalWrite(RAK7200_S76G_BLUE_LED, dev.isMoving() ? LOW : HIGH);
+    
     Serial.println();
     Serial.flush();
 

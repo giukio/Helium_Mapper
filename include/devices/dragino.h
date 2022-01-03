@@ -45,6 +45,8 @@ class Dragino: public Device {
         gps_fix getGpsFix();
         void setLora();
         void setSensors();
+        bool isMoving();
+        bool isMotionJustStarted();
 };
 
 #endif

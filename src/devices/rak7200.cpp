@@ -260,6 +260,8 @@ void Rak7200::setLis3dh(){
     // 2 = double click only interrupt output, detect single click
     // Adjust threshhold, higher numbers are less sensitive
     this->_lis->setClick(2, 40);
+    pinMode(RAK7200_S76G_LIS3DH_INT1, INPUT);
+    attachInterrupt(digitalPinToInterrupt(RAK7200_S76G_LIS3DH_INT1), Rak7200::Lis3dhInt1_ISR, RISING);
 }
 
 int8_t Rak7200::getTemperature(){
@@ -269,4 +271,35 @@ int8_t Rak7200::getTemperature(){
 std::vector<float> Rak7200::getAcceleration(){
     this->_lis->read();
     return std::vector<float>{ this->_lis->x_g, this->_lis->y_g, this->_lis->z_g };
+}
+
+void Rak7200::Lis3dhInt1_ISR(){
+    dev.deviceMoving();
+}
+
+void Rak7200::deviceMoving(){
+        if (this->isMoving() == false)
+        {
+            this->Lis3dhInt1Flag = true;
+            // Device just started moving
+            Serial.print(_lastMotionMillis); Serial.println(": Motion detected.");
+        }
+        
+        this->_lastMotionMillis = millis();
+}
+
+bool Rak7200::isMoving(){
+    return (millis() - this->_lastMotionMillis) < 30000;
+}
+
+bool Rak7200::isMotionJustStarted(){
+    if (this->Lis3dhInt1Flag)
+    {
+        this->Lis3dhInt1Flag = false;
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
