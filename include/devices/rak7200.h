@@ -87,6 +87,36 @@
 
 extern class Rak7200 dev;
 
+class Eeprom
+{
+private:
+    const uint32_t EEPROM_BASE_ADDRESS =  0x08080000UL;
+    const uint32_t EEPROM_SIZE =  0x1800UL;
+
+public:
+    /**
+     * writeEEPROM allows to write a byte(uint8_t) to the internal eeprom
+     * @param   address  starts at 0, the max size depends on the uc type
+     * @param   data     byte (uint8_t)
+     * @return  status   internal HAL_Status
+     */
+    HAL_StatusTypeDef writeEEPROM(uint32_t address, uint8_t data);
+    HAL_StatusTypeDef writeEEPROM(uint32_t address, uint16_t data);
+    HAL_StatusTypeDef writeEEPROM(uint32_t address, uint32_t data);
+
+    /**
+     * readEEPROMByte reads a byte from an internal eeprom
+     * @param   address  of the eeprom byte
+     * @return  data     as a byte (uint8_t)
+     */
+    uint8_t readEEPROM8bit(uint32_t address);
+    uint16_t readEEPROM16bit(uint32_t address);
+    uint32_t readEEPROM32bit(uint32_t address);
+
+    Eeprom(/* args */);
+    ~Eeprom();
+};
+
 class Rak7200: public Device {
     public:
         Rak7200();
@@ -99,6 +129,7 @@ class Rak7200: public Device {
         std::vector<float> getAcceleration();
         bool isMoving();
         bool isMotionJustStarted();
+        void DumpEeprom();
 
     private:
         bool GNSS_probe();
@@ -111,6 +142,10 @@ class Rak7200: public Device {
         void deviceMoving();
         volatile bool Lis3dhInt1Flag = false;
         uint32_t _lastMotionMillis;
+
+        Eeprom ee;
+
 };
+
 
 #endif
