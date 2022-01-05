@@ -48,6 +48,15 @@ class Device {
         virtual void setSensors() = 0;
         virtual bool isMoving() = 0;
         virtual bool isMotionJustStarted() = 0;
+
+        virtual int8_t nvWrite(uint32_t address, uint8_t data) = 0;
+        virtual int8_t nvWrite(uint32_t address, uint16_t data) = 0;
+        virtual int8_t nvWrite(uint32_t address, uint32_t data) = 0;
+        virtual int8_t nvWrite(uint32_t address, uint64_t data) = 0;
+        virtual int8_t nvRead8bit(uint32_t address) = 0;
+        virtual int16_t nvRead16bit(uint32_t address) = 0;
+        virtual int32_t nvRead32bit(uint32_t address) = 0;
+        virtual int64_t nvRead64bit(uint32_t address) = 0;
         gps_fix fix;
     protected:
         NMEAGPS gps;

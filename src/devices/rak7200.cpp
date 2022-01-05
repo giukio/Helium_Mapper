@@ -321,6 +321,40 @@ void Rak7200::DumpEeprom(){
     // Serial.printf("%04X - %08X\r\n", addr, this->ee.readEEPROM32bit(addr+1));
 }
 
+int8_t Rak7200::nvWrite(uint32_t address, uint8_t data ){
+    return 0;
+}
+
+int8_t Rak7200::nvWrite(uint32_t address, uint16_t data){
+    return 0;
+}
+
+int8_t Rak7200::nvWrite(uint32_t address, uint32_t data){
+    return 0;
+}
+
+int8_t Rak7200::nvWrite(uint32_t address, uint64_t data){
+    return 0;
+}
+
+int8_t Rak7200::nvRead8bit(uint32_t address  ){
+    return 0;
+}
+
+int16_t Rak7200::nvRead16bit(uint32_t address){
+    return 0;
+}
+
+int32_t Rak7200::nvRead32bit(uint32_t address){
+    return 0;
+}
+
+int64_t Rak7200::nvRead64bit(uint32_t address){
+    return 0;
+}
+
+
+
 
 /**
  * writeEEPROM allows to write a byte(uint8_t) to the internal eeprom

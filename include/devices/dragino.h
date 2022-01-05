@@ -47,6 +47,14 @@ class Dragino: public Device {
         void setSensors();
         bool isMoving();
         bool isMotionJustStarted();
+        int8_t nvWrite(uint32_t address, uint8_t data);
+        int8_t nvWrite(uint32_t address, uint16_t data);
+        int8_t nvWrite(uint32_t address, uint32_t data);
+        int8_t nvWrite(uint32_t address, uint64_t data);
+        int8_t nvRead8bit(uint32_t address);
+        int16_t nvRead16bit(uint32_t address);
+        int32_t nvRead32bit(uint32_t address);
+        int64_t nvRead64bit(uint32_t address);
 };
 
 #endif

@@ -130,7 +130,14 @@ class Rak7200: public Device {
         bool isMoving();
         bool isMotionJustStarted();
         void DumpEeprom();
-
+        int8_t nvWrite(uint32_t address, uint8_t data);
+        int8_t nvWrite(uint32_t address, uint16_t data);
+        int8_t nvWrite(uint32_t address, uint32_t data);
+        int8_t nvWrite(uint32_t address, uint64_t data);
+        int8_t nvRead8bit(uint32_t address);
+        int16_t nvRead16bit(uint32_t address);
+        int32_t nvRead32bit(uint32_t address);
+        int64_t nvRead64bit(uint32_t address);
     private:
         bool GNSS_probe();
         HardwareSerial* _GNSS = NULL;
