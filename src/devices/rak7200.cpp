@@ -322,35 +322,59 @@ void Rak7200::DumpEeprom(){
 }
 
 int8_t Rak7200::nvWrite(uint32_t address, uint8_t data ){
-    return 0;
+    return (this->ee.writeEEPROM(address, data) == HAL_StatusTypeDef::HAL_OK) ? 0 : -1;
 }
 
 int8_t Rak7200::nvWrite(uint32_t address, uint16_t data){
-    return 0;
+    return (this->ee.writeEEPROM(address, data) == HAL_StatusTypeDef::HAL_OK) ? 0 : -1;
 }
 
 int8_t Rak7200::nvWrite(uint32_t address, uint32_t data){
-    return 0;
+    return (this->ee.writeEEPROM(address, data) == HAL_StatusTypeDef::HAL_OK) ? 0 : -1;
 }
 
 int8_t Rak7200::nvWrite(uint32_t address, uint64_t data){
+    union u64
+    {
+        uint64_t d64;
+        uint32_t d32[2];
+    }split;
+    split.d64 = data;
+
+    if (address % 8) return -2; // Address not aligned
+    if(this->ee.writeEEPROM(address, split.d32[0]) != HAL_StatusTypeDef::HAL_OK){
+        return -1;
+    }
+    if(this->ee.writeEEPROM(address+4, split.d32[1]) != HAL_StatusTypeDef::HAL_OK){
+        return -1;
+    }
+
     return 0;
 }
 
-int8_t Rak7200::nvRead8bit(uint32_t address  ){
-    return 0;
+uint8_t Rak7200::nvRead8bit(uint32_t address  ){
+    return this->ee.readEEPROM8bit(address);
 }
 
-int16_t Rak7200::nvRead16bit(uint32_t address){
-    return 0;
+uint16_t Rak7200::nvRead16bit(uint32_t address){
+    return this->ee.readEEPROM16bit(address);
 }
 
-int32_t Rak7200::nvRead32bit(uint32_t address){
-    return 0;
+uint32_t Rak7200::nvRead32bit(uint32_t address){
+    return this->ee.readEEPROM32bit(address);
 }
 
-int64_t Rak7200::nvRead64bit(uint32_t address){
-    return 0;
+uint64_t Rak7200::nvRead64bit(uint32_t address){
+    union u64
+    {
+        uint64_t d64;
+        uint32_t d32[2];
+    }split;
+
+    if (address % 8) return 0; // Address not aligned
+    split.d32[0] = this->ee.readEEPROM32bit(address);
+    split.d32[1] = this->ee.readEEPROM32bit(address+4);
+    return split.d64;
 }
 
 
