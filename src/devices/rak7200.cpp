@@ -59,7 +59,6 @@ void Rak7200::setConsole(){
   Serial.setTx(S7xx_CONSOLE_TX);
   Serial.setRx(S7xx_CONSOLE_RX);
   Serial.begin(115200);
-  this->DumpEeprom();
 }
 
 bool Rak7200::GNSS_probe() {
