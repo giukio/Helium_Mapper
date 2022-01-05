@@ -59,6 +59,7 @@ void Rak7200::setConsole(){
   Serial.setTx(S7xx_CONSOLE_TX);
   Serial.setRx(S7xx_CONSOLE_RX);
   Serial.begin(115200);
+  this->DumpEeprom();
 }
 
 bool Rak7200::GNSS_probe() {
@@ -307,9 +308,18 @@ bool Rak7200::isMotionJustStarted(){
 void Rak7200::DumpEeprom(){
     for (uint32_t i = 0; i < 0x1800; i++)
     {
-        // Serial.printf("%04X - %08X\r\n", i, readEEPROM32bit(i));
         Serial.printf("%02X",this->ee.readEEPROM8bit(i));
     }
+
+    // uint32_t addr = 0x0B00;
+    // Serial.printf("%04X - %08X\r\n", addr, this->ee.readEEPROM32bit(addr));
+    // if (this->ee.writeEEPROM(addr+1, (uint8_t)0x11) == HAL_StatusTypeDef::HAL_ERROR)
+    // {
+    //     Serial.printf("EEprom Error, coundn't write to address %04X", addr+1);
+    //     Serial.flush();
+    //     return;
+    // }
+    // Serial.printf("%04X - %08X\r\n", addr, this->ee.readEEPROM32bit(addr+1));
 }
 
 
@@ -341,7 +351,7 @@ HAL_StatusTypeDef Eeprom::writeEEPROM(uint32_t address, uint8_t data) {
  */
 HAL_StatusTypeDef Eeprom::writeEEPROM(uint32_t address, uint16_t data) {
     HAL_StatusTypeDef  status;
-    if (address >= EEPROM_SIZE)
+    if ((address >= EEPROM_SIZE)||(address % 2))
     {
         return HAL_StatusTypeDef::HAL_ERROR;
     }
@@ -361,7 +371,7 @@ HAL_StatusTypeDef Eeprom::writeEEPROM(uint32_t address, uint16_t data) {
  */
 HAL_StatusTypeDef Eeprom::writeEEPROM(uint32_t address, uint32_t data) {
     HAL_StatusTypeDef  status;
-    if (address >= EEPROM_SIZE)
+    if ((address >= EEPROM_SIZE)||(address % 4))
     {
         return HAL_StatusTypeDef::HAL_ERROR;
     }
@@ -387,6 +397,10 @@ uint8_t Eeprom::readEEPROM8bit(uint32_t address) {
 
 uint16_t Eeprom::readEEPROM16bit(uint32_t address) {
     uint16_t data = 0;
+    if ((address >= EEPROM_SIZE)||(address % 2))
+    {
+        return 0;
+    }
     address = address + EEPROM_BASE_ADDRESS;
     data = *(__IO uint16_t*)address;
     return data;
@@ -394,6 +408,10 @@ uint16_t Eeprom::readEEPROM16bit(uint32_t address) {
 
 uint32_t Eeprom::readEEPROM32bit(uint32_t address) {
     uint32_t data = 0;
+    if ((address >= EEPROM_SIZE)||(address % 4))
+    {
+        return 0;
+    }
     address = address + EEPROM_BASE_ADDRESS;
     data = *(__IO uint32_t*)address;
     return data;
