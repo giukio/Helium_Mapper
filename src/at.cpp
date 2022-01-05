@@ -41,6 +41,9 @@ void setupAtCommands(){
     inputString.reserve(200); // reserve 200 bytes for the inputString:
     Serial.println("# Arduino AT command Control 1.0. RUNNING #");
 
+    at.AddCommand(new AtCommand("version", [](std::vector<String> p){
+        Serial.println("Helium Mapper Version 1.0.0");
+    }));
 
     at.AddCommand(new AtCommand("get_config=device", [](std::vector<String> p){
         Serial.println("Get Config Command");
