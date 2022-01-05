@@ -303,3 +303,182 @@ bool Rak7200::isMotionJustStarted(){
         return false;
     }
 }
+
+void Rak7200::DumpEeprom(){
+    for (uint32_t i = 0; i < 0x1800; i++)
+    {
+        Serial.printf("%02X",this->ee.readEEPROM8bit(i));
+    }
+
+    // uint32_t addr = 0x0B00;
+    // Serial.printf("%04X - %08X\r\n", addr, this->ee.readEEPROM32bit(addr));
+    // if (this->ee.writeEEPROM(addr+1, (uint8_t)0x11) == HAL_StatusTypeDef::HAL_ERROR)
+    // {
+    //     Serial.printf("EEprom Error, coundn't write to address %04X", addr+1);
+    //     Serial.flush();
+    //     return;
+    // }
+    // Serial.printf("%04X - %08X\r\n", addr, this->ee.readEEPROM32bit(addr+1));
+}
+
+int8_t Rak7200::nvWrite(uint32_t address, uint8_t data ){
+    return (this->ee.writeEEPROM(address, data) == HAL_StatusTypeDef::HAL_OK) ? 0 : -1;
+}
+
+int8_t Rak7200::nvWrite(uint32_t address, uint16_t data){
+    return (this->ee.writeEEPROM(address, data) == HAL_StatusTypeDef::HAL_OK) ? 0 : -1;
+}
+
+int8_t Rak7200::nvWrite(uint32_t address, uint32_t data){
+    return (this->ee.writeEEPROM(address, data) == HAL_StatusTypeDef::HAL_OK) ? 0 : -1;
+}
+
+int8_t Rak7200::nvWrite(uint32_t address, uint64_t data){
+    union u64
+    {
+        uint64_t d64;
+        uint32_t d32[2];
+    }split;
+    split.d64 = data;
+
+    if (address % 8) return -2; // Address not aligned
+    if(this->ee.writeEEPROM(address, split.d32[0]) != HAL_StatusTypeDef::HAL_OK){
+        return -1;
+    }
+    if(this->ee.writeEEPROM(address+4, split.d32[1]) != HAL_StatusTypeDef::HAL_OK){
+        return -1;
+    }
+
+    return 0;
+}
+
+uint8_t Rak7200::nvRead8bit(uint32_t address  ){
+    return this->ee.readEEPROM8bit(address);
+}
+
+uint16_t Rak7200::nvRead16bit(uint32_t address){
+    return this->ee.readEEPROM16bit(address);
+}
+
+uint32_t Rak7200::nvRead32bit(uint32_t address){
+    return this->ee.readEEPROM32bit(address);
+}
+
+uint64_t Rak7200::nvRead64bit(uint32_t address){
+    union u64
+    {
+        uint64_t d64;
+        uint32_t d32[2];
+    }split;
+
+    if (address % 8) return 0; // Address not aligned
+    split.d32[0] = this->ee.readEEPROM32bit(address);
+    split.d32[1] = this->ee.readEEPROM32bit(address+4);
+    return split.d64;
+}
+
+
+
+
+/**
+ * writeEEPROM allows to write a byte(uint8_t) to the internal eeprom
+ * @param   address  starts at 0, the max size depends on the uc type
+ * @param   data     byte (uint8_t)
+ * @return  status   internal HAL_Status
+ */
+HAL_StatusTypeDef Eeprom::writeEEPROM(uint32_t address, uint8_t data) {
+    HAL_StatusTypeDef  status;
+    if (address >= EEPROM_SIZE)
+    {
+        return HAL_StatusTypeDef::HAL_ERROR;
+    }
+    
+    address = address + EEPROM_BASE_ADDRESS;
+    HAL_FLASHEx_DATAEEPROM_Unlock();  //Unprotect the EEPROM to allow writing
+    status = HAL_FLASHEx_DATAEEPROM_Program(TYPEPROGRAMDATA_BYTE, address, data);
+    HAL_FLASHEx_DATAEEPROM_Lock();  // Reprotect the EEPROM
+    return status;
+}
+
+/**
+ * writeEEPROMByte allows to write a half word(uint16_t) to the internal eeprom
+ * @param   address  starts at 0, the max size depends on the uc type
+ * @param   data     byte (uint16_t)
+ * @return  status   internal HAL_Status
+ */
+HAL_StatusTypeDef Eeprom::writeEEPROM(uint32_t address, uint16_t data) {
+    HAL_StatusTypeDef  status;
+    if ((address >= EEPROM_SIZE)||(address % 2))
+    {
+        return HAL_StatusTypeDef::HAL_ERROR;
+    }
+    
+    address = address + EEPROM_BASE_ADDRESS;
+    HAL_FLASHEx_DATAEEPROM_Unlock();  //Unprotect the EEPROM to allow writing
+    status = HAL_FLASHEx_DATAEEPROM_Program(TYPEPROGRAMDATA_HALFWORD, address, data);
+    HAL_FLASHEx_DATAEEPROM_Lock();  // Reprotect the EEPROM
+    return status;
+}
+
+/**
+ * writeEEPROMByte allows to write a word(uint32_t) to the internal eeprom
+ * @param   address  starts at 0, the max size depends on the uc type
+ * @param   data     byte (uint32_t)
+ * @return  status   internal HAL_Status
+ */
+HAL_StatusTypeDef Eeprom::writeEEPROM(uint32_t address, uint32_t data) {
+    HAL_StatusTypeDef  status;
+    if ((address >= EEPROM_SIZE)||(address % 4))
+    {
+        return HAL_StatusTypeDef::HAL_ERROR;
+    }
+    
+    address = address + EEPROM_BASE_ADDRESS;
+    HAL_FLASHEx_DATAEEPROM_Unlock();  //Unprotect the EEPROM to allow writing
+    status = HAL_FLASHEx_DATAEEPROM_Program(TYPEPROGRAMDATA_WORD, address, data);
+    HAL_FLASHEx_DATAEEPROM_Lock();  // Reprotect the EEPROM
+    return status;
+}
+
+/**
+ * readEEPROMByte reads a byte from an internal eeprom
+ * @param   address  of the eeprom byte
+ * @return  data     as a byte (uint8_t)
+ */
+uint8_t Eeprom::readEEPROM8bit(uint32_t address) {
+    uint8_t data = 0;
+    address = address + EEPROM_BASE_ADDRESS;
+    data = *(__IO uint8_t*)address;
+    return data;
+}
+
+uint16_t Eeprom::readEEPROM16bit(uint32_t address) {
+    uint16_t data = 0;
+    if ((address >= EEPROM_SIZE)||(address % 2))
+    {
+        return 0;
+    }
+    address = address + EEPROM_BASE_ADDRESS;
+    data = *(__IO uint16_t*)address;
+    return data;
+}
+
+uint32_t Eeprom::readEEPROM32bit(uint32_t address) {
+    uint32_t data = 0;
+    if ((address >= EEPROM_SIZE)||(address % 4))
+    {
+        return 0;
+    }
+    address = address + EEPROM_BASE_ADDRESS;
+    data = *(__IO uint32_t*)address;
+    return data;
+}
+
+
+Eeprom::Eeprom(/* args */)
+{
+}
+
+Eeprom::~Eeprom()
+{
+}
