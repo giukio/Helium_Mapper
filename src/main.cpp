@@ -66,7 +66,7 @@ void loop() {
   os_runloop_once();
   dev.getGpsFix();
   static uint32_t lastSesorLoop;
-  if ((millis() - lastSesorLoop) > 1000){
+  if ((millis() - lastSesorLoop) > 1000000){
     lastSesorLoop = millis();
     digitalToggle(RAK7200_S76G_RED_LED);
 

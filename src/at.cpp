@@ -50,15 +50,64 @@ void setupAtCommands(){
     }));
 
     at.AddCommand(new AtCommand("set_config=lora", [](std::vector<String> p){
-        Serial.print("Set Config Command: ");
+        if (p.size() < 1) { Serial.println("ERROR: 2"); return;}
+        for (auto &&i : p)
+        {
+            Serial.print(i);
+        }
+        
         String var = p.at(0);
         if(var == "join_mode")
         {
-            Serial.print("join_mode");
+            if (p.size() < 2) { Serial.println("ERROR: 2"); return;}
+            if (p.at(1) == "0"){
+                Serial.println("join_mode:OTAA");
+            }
+            else if (p.at(1) == "1"){
+                Serial.println("join_mode:ABP not supported");
+            }
+            else{
+                Serial.print(p.at(1)); 
+                Serial.println("ERROR: 2"); 
+                return;
+            }
+        }
+        else if(var == "region")
+        {
+            if (p.size() < 2) { Serial.println("ERROR: 2"); return;}
+            if (p.at(1) == "EU868"){
+                #ifdef CFG_eu868
+                    Serial.println("Selected LoRaWAN 1.0.2 Region: EU868\r\nOK");
+                #else
+                    Serial.println("ERROR: Program needs to be recompiled using define CFG_eu868");
+                #endif
+            }
+            else if (p.at(1) == "US915"){
+                #ifdef CFG_us915
+                    Serial.println("Selected LoRaWAN 1.0.2 Region: US915\r\nOK");
+                #else
+                    Serial.println("ERROR: Program needs to be recompiled using define CFG_us915");
+                #endif
+            }
+            else{
+                Serial.println("ERROR: 2"); 
+                return;
+            }
         }
         else if(var == "dev_eui")
         {
-            Serial.print("dev_eui");
+            if (p.size() < 2) { Serial.println("ERROR: 2"); return;}
+            String devEui = p.at(1);
+            if (devEui.length() != 16) { Serial.println("ERROR: 2"); return;}
+            while (devEui.length() >= 2)
+            {
+                uint8_t b = (uint8_t)devEui.substring(0,2).toInt();
+                Serial.println(b);
+                devEui = devEui.substring(2);
+            }
+            
+                    
+            Serial.println("OK");
         }
         else if(var == "app_eui")
         {
@@ -113,7 +162,7 @@ void readAtCommands(){
     if (inChar == '\n') {
         if(at.Parse(inputString) != 0)
         {
-        Serial.println("Parse Error.");
+            Serial.println("Parse Error.");
         }
         // clear the string:
         inputString = "";
