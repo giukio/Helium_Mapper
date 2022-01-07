@@ -36,7 +36,7 @@
 #include <deviceBase.h>
 #include <devices\rak7200.h>
 #include <SPI.h>
-
+#include <lora.h>
 
 
 Rak7200::Rak7200(){
@@ -171,6 +171,16 @@ gps_fix Rak7200::getGpsFix(){
 }
 
 void Rak7200::setLora(){
+    u1_t PROGMEM buf[16];
+    nvRead(DEVEUI, NV_DEVEUI, 8);
+    Serial.print("NV_DEVEUI: ");for (uint16_t i = 0; i < 8; i++){printHex2(DEVEUI[i]);}Serial.println();   
+
+    nvRead(APPEUI, NV_APPEUI, 8);
+    Serial.print("NV_APPEUI: ");for (uint16_t i = 0; i < 8; i++){printHex2(APPEUI[i]);}Serial.println();   
+
+    nvRead(APPKEY, NV_APPKEY, 16);
+    Serial.print("NV_APPKEY: ");for (uint16_t i = 0; i < 16; i++){printHex2(APPKEY[i]);}Serial.println();   
+
     SPI.setMISO(S7xx_SX127x_MISO);
     SPI.setMOSI(S7xx_SX127x_MOSI);
     SPI.setSCLK(S7xx_SX127x_SCK);
@@ -352,6 +362,16 @@ int8_t Rak7200::nvWrite(uint32_t address, uint64_t data){
     return 0;
 }
 
+int8_t Rak7200::nvWrite(uint32_t address, uint8_t* data, uint16_t num){
+    for (int16_t i = 0; i < num; i++)
+    {
+        if (this->ee.writeEEPROM(address+i, data[i]) != HAL_StatusTypeDef::HAL_OK) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 uint8_t Rak7200::nvRead8bit(uint32_t address  ){
     return this->ee.readEEPROM8bit(address);
 }
@@ -377,7 +397,12 @@ uint64_t Rak7200::nvRead64bit(uint32_t address){
     return split.d64;
 }
 
-
+void Rak7200::nvRead(uint8_t* dest, uint32_t address, uint16_t num){
+    for (uint16_t i = 0; i < num; i++)
+    {
+        dest[i] = this->ee.readEEPROM8bit(address+i);
+    }
+}
 
 
 /**

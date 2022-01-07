@@ -53,10 +53,12 @@ class Device {
         virtual int8_t nvWrite(uint32_t address, uint16_t data) = 0;
         virtual int8_t nvWrite(uint32_t address, uint32_t data) = 0;
         virtual int8_t nvWrite(uint32_t address, uint64_t data) = 0;
+        virtual int8_t nvWrite(uint32_t address, uint8_t* data, uint16_t num) = 0;
         virtual uint8_t nvRead8bit(uint32_t address) = 0;
         virtual uint16_t nvRead16bit(uint32_t address) = 0;
         virtual uint32_t nvRead32bit(uint32_t address) = 0;
         virtual uint64_t nvRead64bit(uint32_t address) = 0;
+        virtual void nvRead(uint8_t* dest, uint32_t address, uint16_t num) = 0;
         gps_fix fix;
     protected:
         NMEAGPS gps;
