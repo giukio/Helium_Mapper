@@ -102,11 +102,12 @@ void setupAtCommands(){
             String devEui = p.at(1);
             if (devEui.length() != 16) { Serial.println("ERROR: 2"); return;}
             
-            for (int16_t i = 7; i >= 0; i--)
+            for (int16_t i = 0; i <8; i++)
             {
                 uint8_t b = (uint8_t)std::strtoul(devEui.substring(2*i,2*i+2).c_str(), NULL, 16);
-                DEVEUI[i] = b;
+                DEVEUI[7-i] = b;
             }
+            dev.nvWrite(NV_DEVEUI, DEVEUI, 8);
             Serial.println("OK");
         }
         else if(var == "app_eui")
@@ -115,24 +116,26 @@ void setupAtCommands(){
             String appEui = p.at(1);
             if (appEui.length() != 16) { Serial.println("ERROR: 2"); return;}
             
-            for (int16_t i = 7; i >= 0; i--)
+            for (int16_t i = 0; i < 8 ; i++)
             {
                 uint8_t b = (uint8_t)std::strtoul(appEui.substring(2*i,2*i+2).c_str(), NULL, 16);
-                APPEUI[i] = b;
+                APPEUI[7-i] = b;
             }
+            dev.nvWrite(NV_APPEUI, APPEUI, 8);
             Serial.println("OK");
         }
         else if(var == "app_key")
         {
             if (p.size() < 2) { Serial.println("ERROR: 2"); return;}
-            String appEui = p.at(1);
-            if (appEui.length() != 32) { Serial.println("ERROR: 2"); return;}
+            String appKey = p.at(1);
+            if (appKey.length() != 32) { Serial.println("ERROR: 2"); return;}
             
             for (int16_t i = 0; i < 16; i++)
             {
-                uint8_t b = (uint8_t)std::strtoul(appEui.substring(2*i,2*i+2).c_str(), NULL, 16);
+                uint8_t b = (uint8_t)std::strtoul(appKey.substring(2*i,2*i+2).c_str(), NULL, 16);
                 APPKEY[i] = b;
             }
+            dev.nvWrite(NV_APPKEY, APPKEY, 16);
             Serial.println("OK");
         }
         else if(var == "send_interval")

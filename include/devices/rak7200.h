@@ -84,6 +84,10 @@
 #define S7xx_I2C_SCL                      PB6  // I2C1
 #define S7xx_I2C_SDA                      PB7  // I2C1
 
+// Non Volatile (EEPROM) addresses
+#define NV_DEVEUI 0x0B00
+#define NV_APPEUI 0x0B08
+#define NV_APPKEY 0x0B10
 
 extern class Rak7200 dev;
 
@@ -134,10 +138,12 @@ class Rak7200: public Device {
         int8_t nvWrite(uint32_t address, uint16_t data);
         int8_t nvWrite(uint32_t address, uint32_t data);
         int8_t nvWrite(uint32_t address, uint64_t data);
+        int8_t nvWrite(uint32_t address, uint8_t* data, uint16_t num);
         uint8_t nvRead8bit(uint32_t address);
         uint16_t nvRead16bit(uint32_t address);
         uint32_t nvRead32bit(uint32_t address);
         uint64_t nvRead64bit(uint32_t address);
+        void nvRead(uint8_t* dest, uint32_t address, uint16_t num);
     private:
         bool GNSS_probe();
         HardwareSerial* _GNSS = NULL;

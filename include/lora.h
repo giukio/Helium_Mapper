@@ -36,9 +36,11 @@
 #include <vector>
 
 extern class Lora lora;
-static u1_t PROGMEM DEVEUI[8];
-static u1_t PROGMEM APPEUI[8];
-static u1_t PROGMEM APPKEY[16];
+extern u1_t PROGMEM DEVEUI[8];
+extern u1_t PROGMEM APPEUI[8];
+extern u1_t PROGMEM APPKEY[16];
+
+void printHex2(unsigned v);
 
 class LoraParameter
 {
