@@ -33,6 +33,7 @@
  */
 
 #include <AtParser.h>
+#include <lora.h>
 
 AtParser at = AtParser();
 String inputString = "";         // a string to hold incoming data
@@ -51,11 +52,12 @@ void setupAtCommands(){
 
     at.AddCommand(new AtCommand("set_config=lora", [](std::vector<String> p){
         if (p.size() < 1) { Serial.println("ERROR: 2"); return;}
-        for (auto &&i : p)
-        {
-            Serial.print(i);
-        }
-        
+        // for (auto &&i : p)
+        // {
+        //     Serial.print(i);
+        // }
+        // Serial.println();
+
         String var = p.at(0);
         if(var == "join_mode")
         {
@@ -75,14 +77,14 @@ void setupAtCommands(){
         else if(var == "region")
         {
             if (p.size() < 2) { Serial.println("ERROR: 2"); return;}
-            if (p.at(1) == "EU868"){
+            if (p.at(1) == "eu868"){
                 #ifdef CFG_eu868
                     Serial.println("Selected LoRaWAN 1.0.2 Region: EU868\r\nOK");
                 #else
                     Serial.println("ERROR: Program needs to be recompiled using define CFG_eu868");
                 #endif
             }
-            else if (p.at(1) == "US915"){
+            else if (p.at(1) == "us915"){
                 #ifdef CFG_us915
                     Serial.println("Selected LoRaWAN 1.0.2 Region: US915\r\nOK");
                 #else
@@ -99,23 +101,39 @@ void setupAtCommands(){
             if (p.size() < 2) { Serial.println("ERROR: 2"); return;}
             String devEui = p.at(1);
             if (devEui.length() != 16) { Serial.println("ERROR: 2"); return;}
-            while (devEui.length() >= 2)
-            {
-                uint8_t b = (uint8_t)devEui.substring(0,2).toInt();
-                Serial.println(b);
-                devEui = devEui.substring(2);
-            }
             
-                    
+            for (int16_t i = 7; i >= 0; i--)
+            {
+                uint8_t b = (uint8_t)std::strtoul(devEui.substring(2*i,2*i+2).c_str(), NULL, 16);
+                DEVEUI[i] = b;
+            }
             Serial.println("OK");
         }
         else if(var == "app_eui")
         {
-            Serial.print("app_eui");
+            if (p.size() < 2) { Serial.println("ERROR: 2"); return;}
+            String appEui = p.at(1);
+            if (appEui.length() != 16) { Serial.println("ERROR: 2"); return;}
+            
+            for (int16_t i = 7; i >= 0; i--)
+            {
+                uint8_t b = (uint8_t)std::strtoul(appEui.substring(2*i,2*i+2).c_str(), NULL, 16);
+                APPEUI[i] = b;
+            }
+            Serial.println("OK");
         }
         else if(var == "app_key")
         {
-            Serial.print("app_key");
+            if (p.size() < 2) { Serial.println("ERROR: 2"); return;}
+            String appEui = p.at(1);
+            if (appEui.length() != 32) { Serial.println("ERROR: 2"); return;}
+            
+            for (int16_t i = 0; i < 16; i++)
+            {
+                uint8_t b = (uint8_t)std::strtoul(appEui.substring(2*i,2*i+2).c_str(), NULL, 16);
+                APPKEY[i] = b;
+            }
+            Serial.println("OK");
         }
         else if(var == "send_interval")
         {
