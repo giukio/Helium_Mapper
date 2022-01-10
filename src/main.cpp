@@ -114,6 +114,9 @@ void loop() {
       Serial.print(data);
       // lora.UpdateOrAppendParameter(LoraParameter((uint16_t)data, LoraParameter::Kind::speed));
     }
+    else {
+      digitalWrite(RAK7200_S76G_GREEN_LED, HIGH); // Disable led if no GPS valid
+    }
 
     data = (int16_t)(dev.getTemperature()*10);
     Serial.print(", Temp: ");
