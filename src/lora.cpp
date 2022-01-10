@@ -327,7 +327,7 @@ void LmicInit(){
     LMIC_setClockError(MAX_CLOCK_ERROR *20 / 100);
 
     LMIC_setLinkCheckMode(0);
-    LMIC_setDrTxpow(DR_SF12, 14);
+    LMIC_setDrTxpow(DR_SF7, 14);
     //LMIC_setupBand(BAND_MILLI,13,10);
     //LMIC_selectSubBand(1);
     Serial.println("Radio Initialized");
