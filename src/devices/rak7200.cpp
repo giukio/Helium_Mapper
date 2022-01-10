@@ -299,7 +299,8 @@ void Rak7200::deviceMoving(){
 }
 
 bool Rak7200::isMoving(){
-    return (millis() - this->_lastMotionMillis) < 30000;
+    bool gpsValid = (this->fix.satellites >= 3 ) && (this->fix.speed_kph() > this->_motionGpsSpeedThreshold);
+    return ((millis() - this->_lastMotionMillis) < this->_motionWindowMs) || gpsValid;
 }
 
 bool Rak7200::isMotionJustStarted(){

@@ -155,6 +155,8 @@ class Rak7200: public Device {
         void deviceMoving();
         volatile bool Lis3dhInt1Flag = false;
         uint32_t _lastMotionMillis;
+        uint32_t _motionWindowMs = 30000L;
+        float _motionGpsSpeedThreshold = 5.0;
 
         Eeprom ee;
 
