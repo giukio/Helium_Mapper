@@ -78,7 +78,7 @@ void loop() {
     }
 
 
-    if (dev.fix.valid.location) {
+    if (dev.fix.valid.location && (dev.fix.satellites >= 3)) {
       dev.fix.valid.location = false;
       digitalToggle(RAK7200_S76G_GREEN_LED);
 
@@ -102,23 +102,23 @@ void loop() {
       data = (uint8_t)(dev.fix.satellites);
       Serial.print(", Satellites: ");
       Serial.print(data);
-      lora.UpdateOrAppendParameter(LoraParameter((uint8_t)data, LoraParameter::Kind::satellites));
+      // lora.UpdateOrAppendParameter(LoraParameter((uint8_t)data, LoraParameter::Kind::satellites));
 
       data = (uint16_t)(dev.fix.hdop);
       Serial.print(", HDOP: ");
       Serial.print(data);
-      lora.UpdateOrAppendParameter(LoraParameter((uint16_t)data, LoraParameter::Kind::hdop));
+      // lora.UpdateOrAppendParameter(LoraParameter((uint16_t)data, LoraParameter::Kind::hdop));
 
       data = (int32_t)((dev.fix.speed_kph() * 100));
       Serial.print(", Speed: ");
       Serial.print(data);
-      lora.UpdateOrAppendParameter(LoraParameter((uint16_t)data, LoraParameter::Kind::speed));
+      // lora.UpdateOrAppendParameter(LoraParameter((uint16_t)data, LoraParameter::Kind::speed));
     }
 
     data = (int16_t)(dev.getTemperature()*10);
     Serial.print(", Temp: ");
     Serial.print(data);
-    lora.UpdateOrAppendParameter(LoraParameter((uint16_t)data, LoraParameter::Kind::temperature));
+    // lora.UpdateOrAppendParameter(LoraParameter((uint16_t)data, LoraParameter::Kind::temperature));
 
     std::vector<float> acc_g = dev.getAcceleration();
     std::vector<uint16_t> acc = {
@@ -130,7 +130,7 @@ void loop() {
     Serial.print(", Acc_z: "); Serial.print(acc.at(2));
     // lora.UpdateOrAppendParameter(LoraParameter(acc, LoraParameter::Kind::acceleration));
 
-    // pinMode(RAK7200_S76G_ADC_VBAT, INPUT_ANALOG);
+    pinMode(RAK7200_S76G_ADC_VBAT, INPUT_ANALOG);
     float voltage = (float(analogRead(RAK7200_S76G_ADC_VBAT)) / 4096 * 3.30 / 0.6 * 10.0);
     Serial.print(", V: ");
     Serial.print(voltage);
