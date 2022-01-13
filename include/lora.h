@@ -48,6 +48,7 @@ class LoraParameter
 public:
     enum class Kind{
     unspecified     = 0x0000,
+    gpsMinimal      = 0x0187,
     gps             = 0x0188,
     speed           = 0x0189,
     satellites      = 0x0190,
@@ -90,13 +91,15 @@ private:
     std::vector<uint8_t> _packet; 
     std::vector<LoraParameter> _parameters;
     osjob_t _sendjob;
+    osjob_t _mapjob;
 
 public:
     Lora(/* args */);
 
     void AppendParameter(LoraParameter p);
     void UpdateOrAppendParameter(LoraParameter p);
-    osjob_t* getSendjob();
+    LoraParameter* getParameter(LoraParameter::Kind k);
+    osjob_t* getSendjob(uint8_t port = 1);
     void setTxData();
     void BuildPacket();
     void PrintPacket();
@@ -105,6 +108,7 @@ public:
 
 void printHex2(unsigned v);
 void do_send(osjob_t *j);
+void do_send_mapping(osjob_t *j);
 void LmicInit();
 
 // // ttn application function to decode uplink data.

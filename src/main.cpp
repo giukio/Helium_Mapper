@@ -74,7 +74,7 @@ void loop() {
 
     if (dev.isMotionJustStarted()){
       // Start job (sending automatically starts OTAA too)
-      do_send(lora.getSendjob());   
+      do_send_mapping(lora.getSendjob(2));   
     }
 
 
