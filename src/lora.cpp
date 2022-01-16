@@ -33,7 +33,7 @@
  */
 #include <lora.h>
 
-uint64_t heartbeatTxInterval = 3600;
+uint64_t heartbeatTxInterval = 600;
 uint64_t mapTxInterval = 10;
 
 Lora lora;
@@ -187,6 +187,7 @@ void Lora::BuildPacket(){
 }
 
 void Lora::PrintPacket(){
+    Serial.print("Lora Packet: 0x");
     for (auto &&p : this->_packet)
     {
         printHex2(p);
@@ -279,23 +280,28 @@ void onEvent(ev_t ev) {
                 Serial.println(LMIC.dataLen);
                 Serial.println(F(" bytes of payload"));
             }
-            {
-                u1_t bPort = 0;
-                if (LMIC.txrxFlags & TXRX_PORT){
-                    bPort = LMIC.frame[LMIC.dataBeg - 1];
-                }
-                if ( bPort == 1)
-                    os_setTimedCallback(lora.getSendjob(1), os_getTime() + sec2osticks(heartbeatTxInterval), do_send);
-                else if ( bPort == 2){
-                    if (dev.isMoving())
-                    {
-                        os_setTimedCallback(lora.getSendjob(2), os_getTime() + sec2osticks(mapTxInterval), do_send_mapping);
-                    }
-                }
-                else{
-                    Serial.print("EV_TXCOMPLETE Error: unknown port "); Serial.println(bPort);
-                }
-            }
+            // {
+            //     u1_t bPort = 0;
+            //     Serial.print("EV_TXCOMPLETE: LMIC.txrxFlags 0b"); Serial.println(LMIC.txrxFlags, BIN);
+
+            //     // if (LMIC.txrxFlags & TXRX_PORT){
+            //         bPort = LMIC.frame[LMIC.dataBeg - 1];
+            //     // }
+            //     if ( bPort == 1){
+            //         Serial.print("EV_TXCOMPLETE: port "); Serial.println(bPort);
+            //         // os_setTimedCallback(lora.getSendjob(1), os_getTime() + sec2osticks(heartbeatTxInterval), do_send);
+            //     }
+            //     else if ( bPort == 2){
+            //         Serial.print("EV_TXCOMPLETE: port "); Serial.println(bPort);
+            //         if (dev.isMoving())
+            //         {
+            //             os_setTimedCallback(lora.getSendjob(2), os_getTime() + sec2osticks(mapTxInterval), do_send_mapping);
+            //         }
+            //     }
+            //     else{
+            //         Serial.print("EV_TXCOMPLETE Error: unknown port "); Serial.println(bPort);
+            //     }
+            // }
             break;
         case EV_LOST_TSYNC:
             Serial.println(F("EV_LOST_TSYNC"));
@@ -401,5 +407,6 @@ void LmicInit(){
     Serial.println("Radio Initialized");
 
     // Start job (sending automatically starts OTAA too)
-    do_send(lora.getSendjob());
+    //do_send(lora.getSendjob(1));
+    LMIC_startJoining();
 }
