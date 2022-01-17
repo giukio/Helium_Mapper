@@ -5,9 +5,19 @@
 // The function must return an object, e.g. {"temperature": 22.5}
 function Decoder(bytes, port) 
 {
-  var decoded = {};
-  var hexString=bin2HexStr(bytes);
-  return rakSensorDataDecode(hexString);
+  var decoded = [];
+  switch (port) {
+      case 1:
+          var hexString=bin2HexStr(bytes);
+          decoded = rakSensorDataDecode(hexString);
+          break;
+          
+      case 2:
+          decoded = rakMinimalDataDecode(bytes);
+          break;
+    
+  }
+  return decoded;
 }
 
 // convert array of bytes to hex string.
@@ -33,6 +43,12 @@ function parseShort(str, base)
   return (n << 16) >> 16;
 }
 
+// convert string to triple bytes integer
+function parseTriple(str, base) {
+  var n = parseInt(str, base);
+  return (n << 8) >> 8;
+}
+
 // convert string to Quadruple bytes integer
 function parseQuadruple(str, base) 
 {
@@ -40,65 +56,104 @@ function parseQuadruple(str, base)
   return (n << 32) >> 32;
 }
 
+// decode Minimal mapping data to object
+function rakMinimalDataDecode(bytes){
+  var myObj = {};
+  if (bytes.length === 8) 
+  {
+      var latitude = Number(((bytes[0] << 24 | bytes[1] << 16 | bytes[2] << 8) * 1e-7).toFixed(7));
+      var longitude = Number(((bytes[3] << 24 | bytes[4] << 16 | bytes[5] << 8 ) * 1e-7).toFixed(7));
+      myObj.altitude = Number(((bytes[6] << 8 | bytes[7])).toFixed(0));
+      myObj.location = "(" + latitude + "," + longitude + ")";
+  }
+  
+  return myObj;    
+}
+
 // decode Hex sensor string data to object
 function rakSensorDataDecode(hexStr) {
   var str = hexStr;
   var myObj = {};
 
-  while (str.length > 4) 
-  {
+  while (str.length > 4) {
     var flag = parseInt(str.substring(0, 4), 16);
-    switch (flag) 
-    {
+    switch (flag) {
       case 0x0768:// Humidity
-        myObj.humidity = parseFloat(((parseShort(str.substring(4, 6), 16) * 0.01 / 2) * 100).toFixed(1)) + "%RH";//unit:%RH
+        myObj.humidity = parseFloat(((parseShort(str.substring(4, 6), 16) * 0.01 / 2) * 100).toFixed(1));// + "%RH";//unit:%RH
         str = str.substring(6);
         break;
       case 0x0673:// Atmospheric pressure
-        myObj.barometer = parseFloat((parseShort(str.substring(4, 8), 16) * 0.1).toFixed(2)) + "hPa";//unit:hPa
+        myObj.barometer = parseFloat((parseShort(str.substring(4, 8), 16) * 0.1).toFixed(2));// + "hPa";//unit:hPa
         str = str.substring(8);
         break;
       case 0x0267:// Temperature
-        myObj.temperature = parseFloat((parseShort(str.substring(4, 8), 16) * 0.1).toFixed(2)) + "°C";//unit: °C
+        myObj.temperature = parseFloat((parseShort(str.substring(4, 8), 16) * 0.1).toFixed(2));// + "°C";//unit: °C
         str = str.substring(8);
         break;
+      case 0x0187: // GPS Minimal
+        var latitude = parseFloat((parseTriple(str.substring(4, 10), 16)*256 * 0.0000001).toFixed(7));
+        var longitude = parseFloat((parseTriple(str.substring(10, 16), 16)*256 * 0.0000001).toFixed(7));
+        myObj.altitude = parseFloat((parseTriple(str.substring(16, 20), 16)).toFixed(0)); // Meter
+        myObj.location = "(" + latitude + "," + longitude + ")";
+        myObj.location = "(" + latitude + "," + longitude + ")";
+        str = str.substring(20);
+        break;
+//      case 0x0188:// GPS
+//        var latitude = parseFloat((parseTriple(str.substring(4, 10), 16) * 0.0001).toFixed(4));
+//        var longitude = parseFloat((parseTriple(str.substring(10, 16), 16) * 0.0001).toFixed(4));
+//        myObj.altitude = parseFloat((parseTriple(str.substring(16, 22), 16) * 0.01).toFixed(1)); // Meter
+//        myObj.location = "(" + latitude + "," + longitude + ")";
+//        str = str.substring(22);
+//        break;
       case 0x0188:// GPS
-        myObj.latitude = parseFloat((parseQuadruple(str.substring(4, 12), 16) * 0.0000001).toFixed(7));//unit:°
-        myObj.longitude = parseFloat((parseQuadruple(str.substring(12, 20), 16) * 0.0000001).toFixed(7));//unit:°
-        myObj.altitude = parseFloat((parseQuadruple(str.substring(20, 28), 16) * 0.01).toFixed(0));//unit:m
-        myObj.accuracy = 3;
-        str = str.substring(28);
+         var latitude = parseFloat((parseQuadruple(str.substring(4, 12), 16) * 0.0000001).toFixed(7));//unit:°
+         var longitude = parseFloat((parseQuadruple(str.substring(12, 20), 16) * 0.0000001).toFixed(7));//unit:°
+         myObj.altitude = parseFloat((parseQuadruple(str.substring(20, 28), 16) * 0.01).toFixed(1));//unit:m
+         myObj.location = "(" + latitude + "," + longitude + ")";
+         str = str.substring(28);
+         break;
+      case 0x0189:// speed kmh
+        myObj.speedkph = parseFloat((parseShort(str.substring(4, 8), 16) * 0.01).toFixed(2));// unit:Km/h
+        str = str.substring(8);
+        break;
+      case 0x0190:// satellites
+        myObj.sats = parseFloat((parseShort(str.substring(4, 6), 16)).toFixed(0));
+        str = str.substring(6);
+        break;
+      case 0x0191:// hdop
+        myObj.hdop = parseFloat((parseShort(str.substring(4, 8), 16) * 0.001).toFixed(3));
+        str = str.substring(8);
         break;
       case 0x0371:// Triaxial acceleration
-        myObj.acceleration_x = parseFloat((parseShort(str.substring(4, 8), 16) * 0.001).toFixed(3)) + "g";//unit:g
-        myObj.acceleration_y = parseFloat((parseShort(str.substring(8, 12), 16) * 0.001).toFixed(3)) + "g";//unit:g
-        myObj.acceleration_z = parseFloat((parseShort(str.substring(12, 16), 16) * 0.001).toFixed(3)) + "g";//unit:g
+        myObj.acceleration_x = parseFloat((parseShort(str.substring(4, 8), 16) * 0.001).toFixed(3));
+        myObj.acceleration_y = parseFloat((parseShort(str.substring(8, 12), 16) * 0.001).toFixed(3));
+        myObj.acceleration_z = parseFloat((parseShort(str.substring(12, 16), 16) * 0.001).toFixed(3)); //g
         str = str.substring(16);
         break;
       case 0x0402:// air resistance
-        myObj.gasResistance = parseFloat((parseShort(str.substring(4, 8), 16) * 0.01).toFixed(2)) + "KΩ";//unit:KΩ
+        myObj.gasResistance = parseFloat((parseShort(str.substring(4, 8), 16) * 0.01).toFixed(2));// + "KΩ";//unit:KΩ
         str = str.substring(8);
         break;
       case 0x0802:// Battery Voltage
-        myObj.battery = parseFloat((parseShort(str.substring(4, 8), 16) * 0.01).toFixed(2)) + "V";//unit:V
+        myObj.BATTERY_VOLTAGE = parseFloat((parseShort(str.substring(4, 8), 16) * 0.01).toFixed(2));// + "V";//unit:V
         str = str.substring(8);
         break;
       case 0x0586:// gyroscope
-        myObj.gyroscope_x = parseFloat((parseShort(str.substring(4, 8), 16) * 0.01).toFixed(2)) + "°/s";//unit:°/s
-        myObj.gyroscope_y = parseFloat((parseShort(str.substring(8, 12), 16) * 0.01).toFixed(2)) + "°/s";//unit:°/s
-        myObj.gyroscope_z = parseFloat((parseShort(str.substring(12, 16), 16) * 0.01).toFixed(2)) + "°/s";//unit:°/s
+        myObj.gyroscope_x = parseFloat((parseShort(str.substring(4, 8), 16) * 0.01).toFixed(2));// + "°/s";//unit:°/s
+        myObj.gyroscope_y = parseFloat((parseShort(str.substring(8, 12), 16) * 0.01).toFixed(2));// + "°/s";//unit:°/s
+        myObj.gyroscope_z = parseFloat((parseShort(str.substring(12, 16), 16) * 0.01).toFixed(2));// + "°/s";//unit:°/s
         str = str.substring(16);
         break;
       case 0x0902:// magnetometer x
-        myObj.magnetometer_x = parseFloat((parseShort(str.substring(4, 8), 16) * 0.01).toFixed(2)) + "μT";//unit:μT
+        myObj.magnetometer_x = parseFloat((parseShort(str.substring(4, 8), 16) * 0.01).toFixed(2));// + "μT";//unit:μT
         str = str.substring(8);
         break;
       case 0x0a02:// magnetometer y
-        myObj.magnetometer_y = parseFloat((parseShort(str.substring(4, 8), 16) * 0.01).toFixed(2)) + "μT";//unit:μT
+        myObj.magnetometer_y = parseFloat((parseShort(str.substring(4, 8), 16) * 0.01).toFixed(2));// + "μT";//unit:μT
         str = str.substring(8);
         break;
       case 0x0b02:// magnetometer z
-        myObj.magnetometer_z = parseFloat((parseShort(str.substring(4, 8), 16) * 0.01).toFixed(2)) + "μT";//unit:μT
+        myObj.magnetometer_z = parseFloat((parseShort(str.substring(4, 8), 16) * 0.01).toFixed(2));// + "μT";//unit:μT
         str = str.substring(8);
         break;
       default:
