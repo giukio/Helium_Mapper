@@ -61,10 +61,10 @@ function rakMinimalDataDecode(bytes){
   var myObj = {};
   if (bytes.length === 8) 
   {
-      var latitude = Number(((bytes[0] << 24 | bytes[1] << 16 | bytes[2] << 8) * 1e-7).toFixed(7));
-      var longitude = Number(((bytes[3] << 24 | bytes[4] << 16 | bytes[5] << 8 ) * 1e-7).toFixed(7));
+      myObj.latitude = Number(((bytes[0] << 24 | bytes[1] << 16 | bytes[2] << 8) * 1e-7).toFixed(7));
+      myObj.longitude = Number(((bytes[3] << 24 | bytes[4] << 16 | bytes[5] << 8 ) * 1e-7).toFixed(7));
       myObj.altitude = Number(((bytes[6] << 8 | bytes[7])).toFixed(0));
-      myObj.location = "(" + latitude + "," + longitude + ")";
+      myObj.accuracy = 3;
   }
   
   return myObj;    
@@ -91,11 +91,10 @@ function rakSensorDataDecode(hexStr) {
         str = str.substring(8);
         break;
       case 0x0187: // GPS Minimal
-        var latitude = parseFloat((parseTriple(str.substring(4, 10), 16)*256 * 0.0000001).toFixed(7));
-        var longitude = parseFloat((parseTriple(str.substring(10, 16), 16)*256 * 0.0000001).toFixed(7));
+        myObj.latitude = parseFloat((parseTriple(str.substring(4, 10), 16)*256 * 0.0000001).toFixed(7));
+        myObj.longitude = parseFloat((parseTriple(str.substring(10, 16), 16)*256 * 0.0000001).toFixed(7));
         myObj.altitude = parseFloat((parseTriple(str.substring(16, 20), 16)).toFixed(0)); // Meter
-        myObj.location = "(" + latitude + "," + longitude + ")";
-        myObj.location = "(" + latitude + "," + longitude + ")";
+        myObj.accuracy = 3;
         str = str.substring(20);
         break;
 //      case 0x0188:// GPS
@@ -106,11 +105,11 @@ function rakSensorDataDecode(hexStr) {
 //        str = str.substring(22);
 //        break;
       case 0x0188:// GPS
-         var latitude = parseFloat((parseQuadruple(str.substring(4, 12), 16) * 0.0000001).toFixed(7));//unit:°
-         var longitude = parseFloat((parseQuadruple(str.substring(12, 20), 16) * 0.0000001).toFixed(7));//unit:°
-         myObj.altitude = parseFloat((parseQuadruple(str.substring(20, 28), 16) * 0.01).toFixed(1));//unit:m
-         myObj.location = "(" + latitude + "," + longitude + ")";
-         str = str.substring(28);
+        myObj.latitude = parseFloat((parseQuadruple(str.substring(4, 12), 16) * 0.0000001).toFixed(7));//unit:°
+        myObj.longitude = parseFloat((parseQuadruple(str.substring(12, 20), 16) * 0.0000001).toFixed(7));//unit:°
+        myObj.altitude = parseFloat((parseQuadruple(str.substring(20, 28), 16) * 0.01).toFixed(0));//unit:m
+        myObj.accuracy = 3;
+        str = str.substring(28);
          break;
       case 0x0189:// speed kmh
         myObj.speedkph = parseFloat((parseShort(str.substring(4, 8), 16) * 0.01).toFixed(2));// unit:Km/h
