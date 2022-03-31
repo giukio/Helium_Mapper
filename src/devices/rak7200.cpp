@@ -271,7 +271,8 @@ void Rak7200::setLis3dh(){
     // Adjust threshhold, higher numbers are less sensitive
     this->_lis->setClick(2, 40);
     pinMode(RAK7200_S76G_LIS3DH_INT1, INPUT);
-    attachInterrupt(digitalPinToInterrupt(RAK7200_S76G_LIS3DH_INT1), Rak7200::Lis3dhInt1_ISR, RISING);
+    // attachInterrupt(digitalPinToInterrupt(RAK7200_S76G_LIS3DH_INT1), Rak7200::Lis3dhInt1_ISR, RISING);
+    LowPower.attachInterruptWakeup(digitalPinToInterrupt(RAK7200_S76G_LIS3DH_INT1), Rak7200::Lis3dhInt1_ISR, RISING, SLEEP_MODE);
 }
 
 int8_t Rak7200::getTemperature(){

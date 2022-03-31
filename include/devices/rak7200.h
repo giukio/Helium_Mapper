@@ -36,6 +36,7 @@
 
 #include <deviceBase.h>
 #include <Adafruit_LIS3DH.h>
+#include "STM32LowPower.h"
 #include <vector>
 
 #define SX1276_RegVersion                 0x42
