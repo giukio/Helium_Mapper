@@ -33,7 +33,8 @@
  */
 #include <lora.h>
 
-uint64_t TX_INTERVAL = 15; // Transmit every 15 seconds
+uint64_t heartbeatTxInterval = 600;
+uint64_t mapTxInterval = 10;
 
 Lora lora;
 
@@ -60,19 +61,32 @@ LoraParameter::LoraParameter(uint32_t par, Kind kind){
 
 LoraParameter::LoraParameter(LoraParameter::gps par, Kind kind){
     _kind = kind;
-    _data = std::vector<uint8_t>{ 
-        static_cast<uint8_t>(par.lat >> 24), 
-        static_cast<uint8_t>(par.lat >> 16), 
-        static_cast<uint8_t>(par.lat >> 8), 
-        static_cast<uint8_t>(par.lat),
-        static_cast<uint8_t>(par.lon >> 24), 
-        static_cast<uint8_t>(par.lon >> 16), 
-        static_cast<uint8_t>(par.lon >> 8), 
-        static_cast<uint8_t>(par.lon),
-        static_cast<uint8_t>(par.alt >> 24), 
-        static_cast<uint8_t>(par.alt >> 16), 
-        static_cast<uint8_t>(par.alt >> 8), 
-        static_cast<uint8_t>(par.alt) };
+    if (kind == LoraParameter::Kind::gpsMinimal){
+        int16_t altM = par.alt / 100;
+        _data = std::vector<uint8_t>{ 
+            static_cast<uint8_t>(par.lat >> 24), 
+            static_cast<uint8_t>(par.lat >> 16), 
+            static_cast<uint8_t>(par.lat >> 8), 
+            static_cast<uint8_t>(par.lon >> 24), 
+            static_cast<uint8_t>(par.lon >> 16), 
+            static_cast<uint8_t>(par.lon >> 8), 
+            static_cast<uint8_t>(altM >> 8), 
+            static_cast<uint8_t>(altM) };
+    }else{
+        _data = std::vector<uint8_t>{ 
+            static_cast<uint8_t>(par.lat >> 24), 
+            static_cast<uint8_t>(par.lat >> 16), 
+            static_cast<uint8_t>(par.lat >> 8), 
+            static_cast<uint8_t>(par.lat),
+            static_cast<uint8_t>(par.lon >> 24), 
+            static_cast<uint8_t>(par.lon >> 16), 
+            static_cast<uint8_t>(par.lon >> 8), 
+            static_cast<uint8_t>(par.lon),
+            static_cast<uint8_t>(par.alt >> 24), 
+            static_cast<uint8_t>(par.alt >> 16), 
+            static_cast<uint8_t>(par.alt >> 8), 
+            static_cast<uint8_t>(par.alt) };
+    }
 
 }
 LoraParameter::LoraParameter(std::vector<uint16_t> parVec, Kind kind){
@@ -121,8 +135,33 @@ void Lora::UpdateOrAppendParameter(LoraParameter p){
     this->AppendParameter(p);
 }
 
-osjob_t* Lora::getSendjob(){
-    return &this->_sendjob;
+LoraParameter* Lora::getParameter(LoraParameter::Kind k){
+    for (auto &&i : this->_parameters)
+    {
+        if(i.GetKind() == k){
+            return &i;
+        }
+    }
+    return NULL;
+}
+
+
+osjob_t* Lora::getSendjob(uint8_t port){
+    osjob_t* j;
+    switch (port)
+    {
+    case 1:
+        j = &this->_sendjob;
+        break;
+    case 2:
+        j = &this->_mapjob;
+        break;
+    
+    default:
+        j =  &this->_sendjob;
+        break;
+    }
+    return j;
 }
 
 void Lora::setTxData(){
@@ -148,6 +187,7 @@ void Lora::BuildPacket(){
 }
 
 void Lora::PrintPacket(){
+    Serial.print("Lora Packet: 0x");
     for (auto &&p : this->_packet)
     {
         printHex2(p);
@@ -240,12 +280,28 @@ void onEvent(ev_t ev) {
                 Serial.println(LMIC.dataLen);
                 Serial.println(F(" bytes of payload"));
             }
-            // Schedule next transmission
-            if (dev.isMoving())
-            {
-                os_setTimedCallback(lora.getSendjob(), os_getTime() + sec2osticks(TX_INTERVAL), do_send);
-            }
-            
+            // {
+            //     u1_t bPort = 0;
+            //     Serial.print("EV_TXCOMPLETE: LMIC.txrxFlags 0b"); Serial.println(LMIC.txrxFlags, BIN);
+
+            //     // if (LMIC.txrxFlags & TXRX_PORT){
+            //         bPort = LMIC.frame[LMIC.dataBeg - 1];
+            //     // }
+            //     if ( bPort == 1){
+            //         Serial.print("EV_TXCOMPLETE: port "); Serial.println(bPort);
+            //         // os_setTimedCallback(lora.getSendjob(1), os_getTime() + sec2osticks(heartbeatTxInterval), do_send);
+            //     }
+            //     else if ( bPort == 2){
+            //         Serial.print("EV_TXCOMPLETE: port "); Serial.println(bPort);
+            //         if (dev.isMoving())
+            //         {
+            //             os_setTimedCallback(lora.getSendjob(2), os_getTime() + sec2osticks(mapTxInterval), do_send_mapping);
+            //         }
+            //     }
+            //     else{
+            //         Serial.print("EV_TXCOMPLETE Error: unknown port "); Serial.println(bPort);
+            //     }
+            // }
             break;
         case EV_LOST_TSYNC:
             Serial.println(F("EV_LOST_TSYNC"));
@@ -312,6 +368,24 @@ void do_send(osjob_t *j) {
     // Next TX is scheduled after TX_COMPLETE event.
 }
 
+void do_send_mapping(osjob_t *j) {
+    // Check if there is not a current TX/RX job running
+    if (LMIC.opmode & OP_TXRXPEND) {
+        Serial.println(F("OP_TXRXPEND, not sending"));
+    }
+    else {
+        LoraParameter* lp = lora.getParameter(LoraParameter::Kind::gpsMinimal);
+        if (lp != NULL){
+            LMIC_setTxData2(2, lp->GetData().data(), lp->GetData().size(), 0);
+            Serial.println(F("Packet queued"));
+        }
+        else{
+            Serial.println(F("Error: couldn't find gpsMinimal parameter"));
+        }
+    }
+    // Next TX is scheduled after TX_COMPLETE event.
+}
+
 void LmicInit(){
     // LMIC init
     os_init();
@@ -333,5 +407,6 @@ void LmicInit(){
     Serial.println("Radio Initialized");
 
     // Start job (sending automatically starts OTAA too)
-    do_send(lora.getSendjob());
+    //do_send(lora.getSendjob(1));
+    LMIC_startJoining();
 }

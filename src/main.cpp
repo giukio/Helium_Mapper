@@ -66,16 +66,18 @@ void loop() {
   os_runloop_once();
   dev.getGpsFix();
   static uint32_t lastSesorLoop;
-  if ((millis() - lastSesorLoop) > 1000){
+  static uint32_t lastHeartBeat;
+  extern uint64_t heartbeatTxInterval;
+  static uint32_t lastMap;
+  extern uint64_t mapTxInterval;
+
+  if ((millis() - lastSesorLoop) >= 1000){
     lastSesorLoop = millis();
     digitalToggle(RAK7200_S76G_RED_LED);
 
     int32_t data = 0;
 
-    if (dev.isMotionJustStarted()){
-      // Start job (sending automatically starts OTAA too)
-      do_send(lora.getSendjob());   
-    }
+
 
 
     if (dev.fix.valid.location && (dev.fix.satellites >= 3)) {
@@ -97,7 +99,8 @@ void loop() {
       Serial.print(", Altitude: ");
       Serial.print(location.alt);
 
-      lora.UpdateOrAppendParameter(LoraParameter(location, LoraParameter::Kind::gps));
+      // lora.UpdateOrAppendParameter(LoraParameter(location, LoraParameter::Kind::gps));
+      lora.UpdateOrAppendParameter(LoraParameter(location, LoraParameter::Kind::gpsMinimal));
 
       data = (uint8_t)(dev.fix.satellites);
       Serial.print(", Satellites: ");
@@ -111,40 +114,55 @@ void loop() {
 
       data = (int32_t)((dev.fix.speed_kph() * 100));
       Serial.print(", Speed: ");
-      Serial.print(data);
+      Serial.println(data);
       // lora.UpdateOrAppendParameter(LoraParameter((uint16_t)data, LoraParameter::Kind::speed));
+
+      if (dev.isMotionJustStarted() || ((millis() - lastMap) >= mapTxInterval * 1000)){
+        lastMap = millis();
+        if (dev.isMoving()){
+          do_send_mapping(lora.getSendjob(2));   
+        }
+      }
     }
     else {
       digitalWrite(RAK7200_S76G_GREEN_LED, HIGH); // Disable led if no GPS valid
     }
 
-    data = (int16_t)(dev.getTemperature()*10);
-    Serial.print(", Temp: ");
-    Serial.print(data);
-    // lora.UpdateOrAppendParameter(LoraParameter((uint16_t)data, LoraParameter::Kind::temperature));
+    if ((millis() - lastHeartBeat) >= heartbeatTxInterval * 1000){
+        lastHeartBeat = millis();
+      data = (int16_t)(dev.getTemperature()*10);
+      Serial.print(", Temp: ");
+      Serial.print(data);
+      lora.UpdateOrAppendParameter(LoraParameter((uint16_t)data, LoraParameter::Kind::temperature));
 
-    std::vector<float> acc_g = dev.getAcceleration();
-    std::vector<uint16_t> acc = {
-      (uint16_t)(acc_g.at(0)*1000),
-      (uint16_t)(acc_g.at(1)*1000), 
-      (uint16_t)(acc_g.at(2)*1000)};
-    Serial.print(", Acc_x: "); Serial.print(acc.at(0));
-    Serial.print(", Acc_y: "); Serial.print(acc.at(1));
-    Serial.print(", Acc_z: "); Serial.print(acc.at(2));
-    // lora.UpdateOrAppendParameter(LoraParameter(acc, LoraParameter::Kind::acceleration));
+      std::vector<float> acc_g = dev.getAcceleration();
+      std::vector<uint16_t> acc = {
+        (uint16_t)(acc_g.at(0)*1000),
+        (uint16_t)(acc_g.at(1)*1000), 
+        (uint16_t)(acc_g.at(2)*1000)};
+      Serial.print(", Acc_x: "); Serial.print(acc.at(0));
+      Serial.print(", Acc_y: "); Serial.print(acc.at(1));
+      Serial.print(", Acc_z: "); Serial.print(acc.at(2));
+      // lora.UpdateOrAppendParameter(LoraParameter(acc, LoraParameter::Kind::acceleration));
 
-    pinMode(RAK7200_S76G_ADC_VBAT, INPUT_ANALOG);
-    float voltage = (float(analogRead(RAK7200_S76G_ADC_VBAT)) / 4096 * 3.30 / 0.6 * 10.0);
-    Serial.print(", V: ");
-    Serial.print(voltage);
-    lora.UpdateOrAppendParameter(LoraParameter((uint16_t)(voltage * 100.0), LoraParameter::Kind::voltage));
+      pinMode(RAK7200_S76G_ADC_VBAT, INPUT_ANALOG);
+      uint32_t vBatAdc = analogRead(RAK7200_S76G_ADC_VBAT);
+      float voltage = (float(vBatAdc) / 4096 * 3.30 / 0.6 * 10.0);
+      Serial.print(", Vadc: ");
+      Serial.print(vBatAdc);
+      Serial.print(", V: ");
+      Serial.print(voltage);
+      lora.UpdateOrAppendParameter(LoraParameter((uint16_t)(voltage * 100.0), LoraParameter::Kind::voltage));
 
+      
+      Serial.println();
+      Serial.flush();
+
+      lora.BuildPacket();
+      lora.PrintPacket();
+
+      do_send(lora.getSendjob(1));
+    }
     digitalWrite(RAK7200_S76G_BLUE_LED, dev.isMoving() ? LOW : HIGH);
-    
-    Serial.println();
-    Serial.flush();
-
-    lora.BuildPacket();
-    Serial.print("Lora Packet: 0x");  lora.PrintPacket();
   }
 }
