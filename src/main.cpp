@@ -44,13 +44,7 @@ void setup() {
   pinMode(RAK7200_S76G_GREEN_LED, OUTPUT);
   pinMode(RAK7200_S76G_BLUE_LED, OUTPUT);
 
-  // Configure low power
-  LowPower.begin();
-
   dev.setConsole();
-  // Enable UART in Low Power mode wakeup source
-  LowPower.enableWakeupFrom(&Serial, readAtCommands);
-
   Serial.println("\nHelium Mapper");
   setupAtCommands();
   dev.setGps();
@@ -82,6 +76,9 @@ void loop() {
     digitalToggle(RAK7200_S76G_RED_LED);
 
     int32_t data = 0;
+
+
+
 
     if (dev.fix.valid.location && (dev.fix.satellites >= 3)) {
       dev.fix.valid.location = false;
@@ -167,8 +164,5 @@ void loop() {
       do_send(lora.getSendjob(1));
     }
     digitalWrite(RAK7200_S76G_BLUE_LED, dev.isMoving() ? LOW : HIGH);
-  }
-  else{
-    LowPower.sleep(1000);
   }
 }
