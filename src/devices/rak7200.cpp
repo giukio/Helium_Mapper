@@ -46,7 +46,8 @@ Rak7200::Rak7200()
     if (_GNSS == NULL)
     {
         Serial.println("ERROR: Couldn't Configure GNSS Hardware Serial");
-        while(1);
+        while (1)
+            ;
     }
 
     _lis = new Adafruit_LIS3DH(new TwoWire(S7xx_I2C_SDA, S7xx_I2C_SCL));
@@ -67,8 +68,8 @@ void Rak7200::setConsole()
     // Configure low power
     LowPower.begin();
     // Enable UART in Low Power mode wakeup source
-    // LowPower.enableWakeupFrom(&Serial, readAtCommands);
-    // Serial.println("Start deep sleep wakeup from Serial");
+    LowPower.enableWakeupFrom(&Serial, readAtCommands);
+    Serial.println("Start deep sleep wakeup from Serial");
 }
 
 bool Rak7200::GNSS_probe()
@@ -103,14 +104,22 @@ bool Rak7200::GNSS_probe()
     return false;
 }
 
-void Rak7200::setGps(){
+void gpsWakeup()
+{
+}
+
+void Rak7200::setGps()
+{
     /* activate 1.8V<->3.3V level shifters */
     pinMode(S7xG_CXD5603_LEVEL_SHIFTER, OUTPUT);
     digitalWrite(S7xG_CXD5603_LEVEL_SHIFTER, HIGH);
- 	while (!_GNSS)
-		yield();   
+    while (!_GNSS)
+        yield();
     _GNSS->begin(S7xG_CXD5603_BAUD_RATE);
-    
+
+    LowPower.enableWakeupFrom(_GNSS, NULL);
+    Serial.println("Start deep sleep wakeup from Serial");
+
     // power on GNSS
     Serial.println("Powering On GNSS");
     pinMode(RAK7200_S76G_CXD5603_POWER_ENABLE, OUTPUT);
@@ -124,21 +133,60 @@ void Rak7200::setGps(){
 
     /* give Sony GNSS few ms to warm up */
     delay(125);
-    
+
     _GNSS->flush();
     _GNSS->write("@GNS 0xF\r\n"); // Configure GPS, GLONASS, SBAS, QZSS
-	Serial.println(_GNSS->readStringUntil('\n'));
+    Serial.println(_GNSS->readStringUntil('\n'));
 
     _GNSS->write("@BSSL 0x21\r\n"); // GGA and RMC
-	Serial.println(_GNSS->readStringUntil('\n'));
+    Serial.println(_GNSS->readStringUntil('\n'));
 
     _GNSS->write("@GSR\r\n"); // Hot Start for TTFF
-	Serial.println(_GNSS->readStringUntil('\n'));
+    Serial.println(_GNSS->readStringUntil('\n'));
 
     Serial.print("GNSS   - ");
-    Serial.println(Rak7200::GNSS_probe() ? "PASS" : "FAIL");  
+    Serial.println(Rak7200::GNSS_probe() ? "PASS" : "FAIL");
 
     Serial.println("GNSS UART Initialized");
+}
+
+void Rak7200::wakeGps()
+{
+    bool wakeOk = false;
+    for (int i = 0; i < 3; i++)
+    {
+        _GNSS->write("@WUP\r\n"); // Wake Up
+        String ret = _GNSS->readStringUntil('\n');
+        Serial.println(ret);
+        if (ret.indexOf("[WUP]") != -1)
+        {
+            Serial.println("GPS Wakeup success!");
+            wakeOk = true;
+            break;
+        }
+        else
+        {
+            Serial.println("Failed to Wakeup GPS, retrying...");
+        }
+    }
+    if (wakeOk)
+    {
+        _GNSS->write("@GSR\r\n"); // Hot Start for TTFF
+        Serial.println(_GNSS->readStringUntil('\n'));
+    }
+    else
+    {
+        Serial.println("Failed to Wakeup GPS");
+    }
+}
+
+void Rak7200::sleepGps()
+{
+    _GNSS->write("@GSTP\r\n"); // Stop positioning
+    Serial.println(_GNSS->readStringUntil('\n'));
+
+    _GNSS->write("@SLP 0\r\n"); // Start Sleep Mode 0
+    Serial.println(_GNSS->readStringUntil('\n'));
 }
 
 gps_fix Rak7200::getGpsFix()
@@ -248,7 +296,7 @@ void Rak7200::setLis3dh()
     Serial.print(2 << this->_lis->getRange());
     Serial.println("G");
 
-    // this->_lis->setDataRate(LIS3DH_DATARATE_50_HZ);
+    this->_lis->setDataRate(LIS3DH_DATARATE_50_HZ);
     Serial.print("Data rate set to: ");
     switch (this->_lis->getDataRate())
     {

@@ -126,6 +126,8 @@ class Rak7200: public Device {
         Rak7200();
         void setConsole();
         void setGps();
+        void wakeGps();
+        void sleepGps();
         gps_fix getGpsFix();
         void setLora();
         void setSensors();
