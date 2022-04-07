@@ -46,8 +46,7 @@ Rak7200::Rak7200()
     if (_GNSS == NULL)
     {
         Serial.println("ERROR: Couldn't Configure GNSS Hardware Serial");
-        while (1)
-            ;
+        while(1);
     }
 
     _lis = new Adafruit_LIS3DH(new TwoWire(S7xx_I2C_SDA, S7xx_I2C_SCL));
@@ -104,79 +103,42 @@ bool Rak7200::GNSS_probe()
     return false;
 }
 
-void Rak7200::setGps()
-{
+void Rak7200::setGps(){
+    /* activate 1.8V<->3.3V level shifters */
+    pinMode(S7xG_CXD5603_LEVEL_SHIFTER, OUTPUT);
+    digitalWrite(S7xG_CXD5603_LEVEL_SHIFTER, HIGH);
+ 	while (!_GNSS)
+		yield();   
+    _GNSS->begin(S7xG_CXD5603_BAUD_RATE);
+    
     // power on GNSS
     Serial.println("Powering On GNSS");
     pinMode(RAK7200_S76G_CXD5603_POWER_ENABLE, OUTPUT);
     digitalWrite(RAK7200_S76G_CXD5603_POWER_ENABLE, HIGH);
-    delay(1200); // Delay 315µs to 800µs ramp up time
-    while (!_GNSS)
-        yield();
-    _GNSS->begin(S7xG_CXD5603_BAUD_RATE);
-    Serial.println("GNSS UART Initialized");
+    // delay(1200); // Delay 315µs to 800µs ramp up time
 
-    /* drive GNSS RST pin low */
     pinMode(S7xG_CXD5603_RESET, OUTPUT);
     digitalWrite(S7xG_CXD5603_RESET, LOW);
-
-    /* activate 1.8V<->3.3V level shifters */
-    pinMode(S7xG_CXD5603_LEVEL_SHIFTER, OUTPUT);
-    digitalWrite(S7xG_CXD5603_LEVEL_SHIFTER, HIGH);
-
-    /* keep RST low to ensure proper IC reset */
     delay(250);
-
-    /* release */
     digitalWrite(S7xG_CXD5603_RESET, HIGH);
 
     /* give Sony GNSS few ms to warm up */
     delay(125);
+    
+    _GNSS->flush();
+    _GNSS->write("@GNS 0xF\r\n"); // Configure GPS, GLONASS, SBAS, QZSS
+	Serial.println(_GNSS->readStringUntil('\n'));
 
-    /* configure GNSS */
-    // _GNSS.write("@GCD\r\n"); // Cold start
-    // delay(500);
-    //_GNSS.write("@GSW\r\n"); // Warm start
-    // delay(500);
-    Rak7200::_GNSS->write("@GSP\r\n"); // Hot start for position accuracy
-    delay(500);
-    //_GNSS.write("@GPPS 0x1\r\n"); // Enable PPS
-    // delay(125);
-    /*
-     * @GNS Select the satellite systems to be used for positioning
-     * bit 0 : GPS          0x01
-     * bit 1 : GLONASS      0x02
-     * bit 2 : SBAS         0x04
-     * bit 3 : QZSS L1-CA   0x08
-     *
-     */
-    Rak7200::_GNSS->write("@GNS 0x7\r\n"); // Configure GPS, GLONASS, SBAS
-    //_GNSS.write("@GNS 0x5\r\n"); // Configure GPS, SBAS
-    //_GNSS.write("@GNS 0x1\r\n"); // Configure GPS
-    //_GNSS.write("@GNS 0x2\r\n"); // Configure GLONASS
-    delay(125);
-    /*
-     *
-     * @BSSL Select NMEA sentences to output
-     * bit0 : GGA 0x01
-     * bit1 : GLL 0x02
-     * bit2 : GSA 0x04
-     * bit3 : GSV 0x08
-     * bit4 : GNS 0x10
-     * bit5 : RMC 0x20
-     * bit6 : VTG 0x40
-     * bit7 : ZDA 0x80
-     *
-     */
-    //_GNSS.write("@BSSL 0xFF\r\n"); // All NMEA sentences
-    //_GNSS.write("@BSSL 0xFE\r\n"); // All NMEA sentences but GGA
-    //_GNSS.write("@BSSL 0xB3\r\n"); // GGA, GLL, GNS, RMC, ZDA
-    //_GNSS.write("@BSSL 0xA1\r\n"); // GGA, RMC, ZDA
-    Rak7200::_GNSS->write("@BSSL 0x21\r\n"); // GGA and RMC
-    delay(125);
+    _GNSS->write("@BSSL 0x21\r\n"); // GGA and RMC
+	Serial.println(_GNSS->readStringUntil('\n'));
+
+    _GNSS->write("@GSR\r\n"); // Hot Start for TTFF
+	Serial.println(_GNSS->readStringUntil('\n'));
 
     Serial.print("GNSS   - ");
-    Serial.println(Rak7200::GNSS_probe() ? "PASS" : "FAIL");
+    Serial.println(Rak7200::GNSS_probe() ? "PASS" : "FAIL");  
+
+    Serial.println("GNSS UART Initialized");
 }
 
 gps_fix Rak7200::getGpsFix()
