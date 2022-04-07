@@ -4,21 +4,21 @@
  *  BSD 3-Clause License
  *  Copyright (c) 2021, Giulio Berti
  *  All rights reserved.
- *  
+ *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
- *  
+ *
  *  1. Redistributions of source code must retain the above copyright notice, this
  *     list of conditions and the following disclaimer.
- *  
+ *
  *  2. Redistributions in binary form must reproduce the above copyright notice,
  *     this list of conditions and the following disclaimer in the documentation
  *     and/or other materials provided with the distribution.
- *  
+ *
  *  3. Neither the name of the copyright holder nor the names of its
  *     contributors may be used to endorse or promote products derived from
  *     this software without specific prior written permission.
- *  
+ *
  *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -29,140 +29,208 @@
  *  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
  *  OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *  
+ *
  */
 
 #include <Arduino.h>
 #include <at.h>
 #include <devices.h>
 #include <lora.h>
+#include <STM32LowPower.h>
 
+enum eDeviceState
+{
+	DEVICE_STATE_INIT,
+	DEVICE_STATE_JOIN,
+	DEVICE_STATE_WAIT_GPS_FIX,
+	DEVICE_STATE_SEND_MINIMAL,
+	DEVICE_STATE_SEND_HEARTBEAT,
+	DEVICE_STATE_CYCLE,
+	DEVICE_STATE_SLEEP
+};
+enum eDeviceState deviceState;
+/* Get the rtc object */
+STM32RTC &rtc = STM32RTC::getInstance();
+extern __IO uint32_t uwTick;
 
-void setup() {
-  // put your setup code here, to run once:
-  pinMode(RAK7200_S76G_RED_LED, OUTPUT);
-  pinMode(RAK7200_S76G_GREEN_LED, OUTPUT);
-  pinMode(RAK7200_S76G_BLUE_LED, OUTPUT);
+void setup()
+{
+	// put your setup code here, to run once:
+	pinMode(RAK7200_S76G_RED_LED, OUTPUT);
+	pinMode(RAK7200_S76G_GREEN_LED, OUTPUT);
+	pinMode(RAK7200_S76G_BLUE_LED, OUTPUT);
 
-  dev.setConsole();
-  Serial.println("\nHelium Mapper");
-  setupAtCommands();
-  dev.setGps();
-  dev.setLora();
-  LmicInit();
-  dev.setSensors();
+	dev.setConsole();
+	Serial.println("\nHelium Mapper");
+	rtc.begin(true); // initialize RTC 24H format
+	uwTick = (((rtc.getDay() * 24 + rtc.getHours()) * 60 + rtc.getMinutes()) * 60 + rtc.getSeconds()) * 1000 + rtc.getSubSeconds();
 
-  digitalWrite(RAK7200_S76G_RED_LED, HIGH);
-  digitalWrite(RAK7200_S76G_GREEN_LED, HIGH);
-  digitalWrite(RAK7200_S76G_BLUE_LED, HIGH);
-  Serial.println("Setup Complete.");
-  Serial.flush();
+	setupAtCommands();
+	dev.setGps();
+	dev.setLora();
+	LmicInit();
+	dev.setSensors();
+
+	deviceState = DEVICE_STATE_INIT;
+
+	digitalWrite(RAK7200_S76G_RED_LED, HIGH);
+	digitalWrite(RAK7200_S76G_GREEN_LED, HIGH);
+	digitalWrite(RAK7200_S76G_BLUE_LED, HIGH);
+	Serial.println("Setup Complete.");
+	Serial.flush();
 }
 
-void loop() {
-  // put your main code here, to run repeatedly:
+void loop()
+{
+	// put your main code here, to run repeatedly:
+	static uint32_t lastSesorLoop;
+	static uint32_t lastHeartBeat;
+	extern uint64_t heartbeatTxInterval;
+	static uint32_t lastMap;
+	extern uint64_t mapTxInterval;
+	static uint32_t lastWaitGpsFix;
+	uint64_t WaitGpsFixInterval = 100;
+	static eDeviceState lastState;
+	bool isGpsValid;
+	bool isMoving;
 
-  readAtCommands();
-  os_runloop_once();
-  dev.getGpsFix();
-  static uint32_t lastSesorLoop;
-  static uint32_t lastHeartBeat;
-  extern uint64_t heartbeatTxInterval;
-  static uint32_t lastMap;
-  extern uint64_t mapTxInterval;
+	readAtCommands();
+	os_runloop_once();
 
-  if ((millis() - lastSesorLoop) >= 1000){
-    lastSesorLoop = millis();
-    digitalToggle(RAK7200_S76G_RED_LED);
+	dev.getGpsFix();
+	isGpsValid = (dev.fix.valid.location && (dev.fix.satellites >= 4));
+	dev.fix.valid.location = false;
+	isMoving = dev.isMoving();
 
-    int32_t data = 0;
+	if ((millis() - lastSesorLoop) >= 1000)
+	{
+		lastSesorLoop = millis();
+		digitalToggle(RAK7200_S76G_RED_LED);
+		digitalWrite(RAK7200_S76G_GREEN_LED, isGpsValid ? LOW : HIGH);
+		digitalWrite(RAK7200_S76G_BLUE_LED, isMoving ? LOW : HIGH);
+	}
+	if (lastState != deviceState)
+	{
+		Serial.print(millis());
+		Serial.print(": SM: ");
+		Serial.println(deviceState);
+		lastState = deviceState;
+	}
 
+	switch (deviceState)
+	{
+	case DEVICE_STATE_INIT:
+	{
+		dev.getTemperature(); // Temp bug workaround
 
+		lastWaitGpsFix = millis();
+		deviceState = DEVICE_STATE_JOIN;
+		break;
+	}
+	case DEVICE_STATE_JOIN:
+	{
+		if (LMIC.devaddr != 0)
+		{
+			Serial.print(millis());
+			Serial.println(": Waiting for GPS Fix");
+			deviceState = DEVICE_STATE_WAIT_GPS_FIX;
+		}
+		break;
+	}
+	case DEVICE_STATE_WAIT_GPS_FIX:
+	{
+		if (isGpsValid)
+		{
+			Serial.print(millis());
+			Serial.print(": GPS Fix valid, #sats: ");
+			Serial.println(dev.fix.satellites);
 
+			deviceState = DEVICE_STATE_CYCLE;
+		}
+		else if ((millis() - lastWaitGpsFix) >= WaitGpsFixInterval * 1000)
+		{
+			Serial.print(millis());
+			Serial.println(": GPS fix not found");
+			deviceState = DEVICE_STATE_CYCLE;
+		}
+		break;
+	}
+	case DEVICE_STATE_CYCLE:
+	{
 
-    if (dev.fix.valid.location && (dev.fix.satellites >= 3)) {
-      dev.fix.valid.location = false;
-      digitalToggle(RAK7200_S76G_GREEN_LED);
+		if ((millis() - lastHeartBeat) >= heartbeatTxInterval * 1000)
+		{
+			lastHeartBeat = millis();
+			deviceState = DEVICE_STATE_SEND_HEARTBEAT;
+		}
+		else if (isGpsValid && isMoving && ((millis() - lastMap) >= mapTxInterval * 1000))
+		{
+			Serial.print("IsMoving: ");
+			Serial.println(isMoving);
+			Serial.print("LastMap: ");
+			Serial.println(lastMap);
+			lastMap = millis();
+			deviceState = DEVICE_STATE_SEND_MINIMAL;
+		}
+		else if (isMoving == false)
+		{
+			deviceState = DEVICE_STATE_SLEEP;
+		}
+		break;
+	}
+	case DEVICE_STATE_SEND_MINIMAL:
+	{
+		Serial.print(millis());
+		Serial.println(": Sending Map");
+		LoraParameter::gps location;
+		location.lat = (int32_t)(dev.fix.latitudeL());
+		location.lon = (int32_t)(dev.fix.longitudeL());
+		location.alt = (int32_t)(dev.fix.altitude_cm());
+		lora.UpdateOrAppendParameter(LoraParameter(location, LoraParameter::Kind::gpsMinimal));
+		do_send_mapping(lora.getSendjob(2));
 
-      // Prepare upstream data transmission at the next possible time.
-      LoraParameter::gps location;
+		deviceState = DEVICE_STATE_CYCLE;
+		break;
+	}
+	case DEVICE_STATE_SEND_HEARTBEAT:
+	{
+		Serial.print(millis());
+		Serial.println(": Sending Heartbeat");
+		lora.UpdateOrAppendParameter(LoraParameter((uint16_t)(dev.getTemperature() * 10), LoraParameter::Kind::temperature));
 
-      location.lat = (int32_t)(dev.fix.latitudeL());
-      Serial.print("Location: ");
-      Serial.print(location.lat);
+		pinMode(RAK7200_S76G_ADC_VBAT, INPUT_ANALOG);
+		uint32_t vBatAdc = analogRead(RAK7200_S76G_ADC_VBAT);
+		float voltage = (float(vBatAdc) / 4096 * 3.30 / 0.6 * 10.0);
+		lora.UpdateOrAppendParameter(LoraParameter((uint16_t)(voltage * 100.0), LoraParameter::Kind::voltage));
 
-      location.lon = (int32_t)(dev.fix.longitudeL());
-      Serial.print(", ");
-      Serial.print(location.lon);
+		lora.BuildPacket();
+		lora.PrintPacket();
 
-      location.alt = (int32_t)(dev.fix.altitude_cm());
-      Serial.print(", Altitude: ");
-      Serial.print(location.alt);
+		do_send(lora.getSendjob(1));
 
-      // lora.UpdateOrAppendParameter(LoraParameter(location, LoraParameter::Kind::gps));
-      lora.UpdateOrAppendParameter(LoraParameter(location, LoraParameter::Kind::gpsMinimal));
+		deviceState = DEVICE_STATE_CYCLE;
+		break;
+	}
+	case DEVICE_STATE_SLEEP:
+	{
+		Serial.print(millis());
+		Serial.println(": Going to Sleep now.");
+		Serial.flush();
+		digitalWrite(RAK7200_S76G_RED_LED, HIGH);
+		digitalWrite(RAK7200_S76G_GREEN_LED, HIGH);
+		digitalWrite(RAK7200_S76G_BLUE_LED, HIGH);
 
-      data = (uint8_t)(dev.fix.satellites);
-      Serial.print(", Satellites: ");
-      Serial.print(data);
-      // lora.UpdateOrAppendParameter(LoraParameter((uint8_t)data, LoraParameter::Kind::satellites));
+		LowPower.deepSleep();
+		uwTick = (((rtc.getDay() * 24 + rtc.getHours()) * 60 + rtc.getMinutes()) * 60 + rtc.getSeconds()) * 1000 + rtc.getSubSeconds();
 
-      data = (uint16_t)(dev.fix.hdop);
-      Serial.print(", HDOP: ");
-      Serial.print(data);
-      // lora.UpdateOrAppendParameter(LoraParameter((uint16_t)data, LoraParameter::Kind::hdop));
-
-      data = (int32_t)((dev.fix.speed_kph() * 100));
-      Serial.print(", Speed: ");
-      Serial.println(data);
-      // lora.UpdateOrAppendParameter(LoraParameter((uint16_t)data, LoraParameter::Kind::speed));
-
-      if (dev.isMotionJustStarted() || ((millis() - lastMap) >= mapTxInterval * 1000)){
-        lastMap = millis();
-        if (dev.isMoving()){
-          do_send_mapping(lora.getSendjob(2));   
-        }
-      }
-    }
-    else {
-      digitalWrite(RAK7200_S76G_GREEN_LED, HIGH); // Disable led if no GPS valid
-    }
-
-    if ((millis() - lastHeartBeat) >= heartbeatTxInterval * 1000){
-        lastHeartBeat = millis();
-      data = (int16_t)(dev.getTemperature()*10);
-      Serial.print(", Temp: ");
-      Serial.print(data);
-      lora.UpdateOrAppendParameter(LoraParameter((uint16_t)data, LoraParameter::Kind::temperature));
-
-      std::vector<float> acc_g = dev.getAcceleration();
-      std::vector<uint16_t> acc = {
-        (uint16_t)(acc_g.at(0)*1000),
-        (uint16_t)(acc_g.at(1)*1000), 
-        (uint16_t)(acc_g.at(2)*1000)};
-      Serial.print(", Acc_x: "); Serial.print(acc.at(0));
-      Serial.print(", Acc_y: "); Serial.print(acc.at(1));
-      Serial.print(", Acc_z: "); Serial.print(acc.at(2));
-      // lora.UpdateOrAppendParameter(LoraParameter(acc, LoraParameter::Kind::acceleration));
-
-      pinMode(RAK7200_S76G_ADC_VBAT, INPUT_ANALOG);
-      uint32_t vBatAdc = analogRead(RAK7200_S76G_ADC_VBAT);
-      float voltage = (float(vBatAdc) / 4096 * 3.30 / 0.6 * 10.0);
-      Serial.print(", Vadc: ");
-      Serial.print(vBatAdc);
-      Serial.print(", V: ");
-      Serial.print(voltage);
-      lora.UpdateOrAppendParameter(LoraParameter((uint16_t)(voltage * 100.0), LoraParameter::Kind::voltage));
-
-      
-      Serial.println();
-      Serial.flush();
-
-      lora.BuildPacket();
-      lora.PrintPacket();
-
-      do_send(lora.getSendjob(1));
-    }
-    digitalWrite(RAK7200_S76G_BLUE_LED, dev.isMoving() ? LOW : HIGH);
-  }
+		Serial.println("\r\nWoke up from sleep!");
+		deviceState = DEVICE_STATE_INIT;
+		break;
+	}
+	default:
+	{
+		deviceState = DEVICE_STATE_INIT;
+		break;
+	}
+	}
 }
