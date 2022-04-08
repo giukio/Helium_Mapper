@@ -51,9 +51,7 @@ enum eDeviceState
 	DEVICE_STATE_IDLE
 };
 enum eDeviceState deviceState;
-/* Get the rtc object */
-STM32RTC &rtc = STM32RTC::getInstance();
-extern __IO uint32_t uwTick;
+static uint32_t lastWaitGpsFix;
 
 void setup()
 {
@@ -63,10 +61,9 @@ void setup()
 	pinMode(RAK7200_S76G_BLUE_LED, OUTPUT);
 
 	dev.configRtc();
+	dev.updateMillis();
 	dev.setConsole();
 	Serial.println("\nHelium Mapper");
-	rtc.begin(true); // initialize RTC 24H format
-	uwTick = (((rtc.getDay() * 24 + rtc.getHours()) * 60 + rtc.getMinutes()) * 60 + rtc.getSeconds()) * 1000 + rtc.getSubSeconds();
 
 	setupAtCommands();
 	dev.setGps();
@@ -75,6 +72,8 @@ void setup()
 	dev.setSensors();
 	dev.configLowPower();
 
+	dev.setRtcAlarmIn(0, 0, 10, 0);
+	lastWaitGpsFix = millis();
 	deviceState = DEVICE_STATE_INIT;
 
 	digitalWrite(RAK7200_S76G_RED_LED, HIGH);
@@ -92,7 +91,6 @@ void loop()
 	extern uint64_t heartbeatTxInterval;
 	static uint32_t lastMap;
 	extern uint64_t mapTxInterval;
-	static uint32_t lastWaitGpsFix;
 	uint64_t WaitGpsFixInterval = 100;
 	static eDeviceState lastState;
 	bool isGpsValid;
@@ -101,13 +99,6 @@ void loop()
 	readAtCommands();
 	os_runloop_once();
 
-	// if ((millis() - lastSesorLoop) >= 1000)
-	// {
-	//   lastSesorLoop = millis();
-	//   digitalToggle(RAK7200_S76G_RED_LED);
-	//   digitalWrite(RAK7200_S76G_GREEN_LED, isGpsValid ? LOW : HIGH);
-	//   digitalWrite(RAK7200_S76G_BLUE_LED, isMoving ? LOW : HIGH);
-	// }
 	if (lastState != deviceState)
 	{
 		Serial.print(millis());
@@ -122,10 +113,22 @@ void loop()
 	{
 		digitalWrite(RAK7200_S76G_RED_LED, LOW);
 		dev.getTemperature(); // Temp bug workaround
-		dev.wakeGps();
+		if (dev.wakeGps())
+		{
+			if (dev.wakeupPin)
+			{
+				dev.wakeupPin = false;
+				lastWaitGpsFix = millis();
+				Serial.println("Wakeup from External Pin.");
+			}
 
-		lastWaitGpsFix = millis();
-		deviceState = DEVICE_STATE_JOIN;
+			deviceState = DEVICE_STATE_JOIN;
+		}
+		else
+		{
+			deviceState = DEVICE_STATE_SLEEP;
+		}
+
 		break;
 	}
 	case DEVICE_STATE_JOIN:
@@ -150,7 +153,6 @@ void loop()
 
 			dev.fix.valid.location = false;
 			isMoving = dev.isMoving();
-			digitalWrite(RAK7200_S76G_BLUE_LED, isMoving ? LOW : HIGH);
 
 			if (isGpsValid)
 			{
@@ -158,6 +160,7 @@ void loop()
 				Serial.print(": GPS Fix valid, #sats: ");
 				Serial.println(dev.fix.satellites);
 
+				lastWaitGpsFix = millis();
 				deviceState = DEVICE_STATE_CYCLE;
 			}
 			else if ((millis() - lastWaitGpsFix) >= WaitGpsFixInterval * 1000)
@@ -186,6 +189,7 @@ void loop()
 		{
 			lastHeartBeat = millis();
 			dev.setRtcAlarmIn(0, 0, 10, 0);
+			digitalWrite(RAK7200_S76G_BLUE_LED, LOW);
 			deviceState = DEVICE_STATE_SEND_HEARTBEAT;
 		}
 		else if (isGpsValid && isMoving && ((millis() - lastMap) >= mapTxInterval * 1000))
@@ -195,6 +199,7 @@ void loop()
 			Serial.print("LastMap: ");
 			Serial.println(lastMap);
 			lastMap = millis();
+			digitalWrite(RAK7200_S76G_BLUE_LED, LOW);
 			deviceState = DEVICE_STATE_SEND_MINIMAL;
 		}
 		else if (isMoving == false)

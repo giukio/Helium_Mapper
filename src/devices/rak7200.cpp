@@ -140,11 +140,18 @@ void Rak7200::setGps()
 	Serial.println("GNSS UART Initialized");
 }
 
-void Rak7200::wakeGps()
+bool Rak7200::wakeGps()
 {
+	bool wakeOk = true;
 	if (gpsSleeping)
 	{
-		bool wakeOk = false;
+		wakeOk = false;
+		while (_GNSS->available())
+		{
+			_GNSS->read();
+		}
+		_GNSS->flush();
+		
 		for (int i = 0; i < 3; i++)
 		{
 			_GNSS->write("@WUP\r\n"); // Wake Up
@@ -159,7 +166,7 @@ void Rak7200::wakeGps()
 			}
 			else
 			{
-				Serial.println("Failed to Wakeup GPS, retrying...");
+				Serial.println("Retrying to Wakeup GPS...");
 			}
 		}
 		if (wakeOk)
@@ -172,6 +179,7 @@ void Rak7200::wakeGps()
 			Serial.println("Failed to Wakeup GPS");
 		}
 	}
+	return wakeOk;
 }
 
 void Rak7200::sleepGps()
@@ -497,8 +505,8 @@ void Rak7200::configRtc()
 	// By default the LSI is selected as source.
 	_rtc.setClockSource(STM32RTC::LSE_CLOCK);
 	_rtc.begin(true);
-	_rtc.setTime(0, 0, 0);
-	_rtc.setDate(0, 0, 0);
+	_rtc.setTime(0, 0, 0, 0);
+	_rtc.setDate(1, 1, 0);
 }
 
 void Rak7200::configLowPower()
@@ -549,7 +557,7 @@ bool Rak7200::gpsDataAvailable()
 
 void Rak7200::updateMillis()
 {
-	uwTick = (((_rtc.getDay() * 24 + _rtc.getHours()) * 60 + _rtc.getMinutes()) * 60 + _rtc.getSeconds()) * 1000 + _rtc.getSubSeconds();
+	uwTick = ((((_rtc.getDay()-1) * 24 + _rtc.getHours()) * 60 + _rtc.getMinutes()) * 60 + _rtc.getSeconds()) * 1000 + _rtc.getSubSeconds();
 }
 
 void Rak7200::setRtcAlarmIn(uint8_t days, uint8_t hours, uint8_t minutes, uint8_t seconds)

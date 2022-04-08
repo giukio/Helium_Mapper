@@ -127,7 +127,7 @@ public:
 	Rak7200();
 	void setConsole();
 	void setGps();
-	void wakeGps();
+	bool wakeGps();
 	void sleepGps();
 	gps_fix getGpsFix();
 	void setLora();
