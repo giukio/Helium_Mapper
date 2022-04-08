@@ -39,6 +39,7 @@ extern class Lora lora;
 extern u1_t PROGMEM DEVEUI[8];
 extern u1_t PROGMEM APPEUI[8];
 extern u1_t PROGMEM APPKEY[16];
+extern bool txComplete;
 
 void printHex2(unsigned v);
 
