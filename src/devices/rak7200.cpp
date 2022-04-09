@@ -131,6 +131,9 @@ void Rak7200::setGps()
 	_GNSS->write("@BSSL 0x21\r\n"); // GGA and RMC
 	Serial.println(_GNSS->readStringUntil('\n'));
 
+	_GNSS->write("@GPOS 44350886 11690879 1000<CR><LF>\r\n"); // @GPOS: Receiver position setting (ellipsoidal coordinates)
+	Serial.println(_GNSS->readStringUntil('\n'));
+
 	_GNSS->write("@GSR\r\n"); // Hot Start for TTFF
 	Serial.println(_GNSS->readStringUntil('\n'));
 
