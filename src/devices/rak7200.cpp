@@ -154,7 +154,7 @@ bool Rak7200::wakeGps()
 			_GNSS->read();
 		}
 		_GNSS->flush();
-		
+
 		for (int i = 0; i < 3; i++)
 		{
 			_GNSS->write("@WUP\r\n"); // Wake Up
@@ -360,6 +360,7 @@ std::vector<float> Rak7200::getAcceleration()
 
 void Rak7200::Lis3dhInt1_ISR()
 {
+	dev.updateMillis();
 	dev.wakeupPin = true;
 	dev.deviceMoving();
 }
@@ -379,7 +380,8 @@ void Rak7200::deviceMoving()
 
 bool Rak7200::isMoving()
 {
-	bool gpsValid = (this->fix.satellites >= 4) && (this->fix.speed_kph() > this->_motionGpsSpeedThreshold);
+	bool gpsValid = (this->fix.status == gps_fix::status_t::STATUS_STD) &&
+					(this->fix.speed_kph() > this->_motionGpsSpeedThreshold);
 	return ((millis() - this->_lastMotionMillis) < this->_motionWindowMs) || gpsValid;
 }
 
@@ -534,11 +536,15 @@ void Rak7200::configLowPower()
 
 void Rak7200::_rtcWakeup(void *data)
 {
+	dev.updateMillis();
 	dev.wakeupRtc = true;
+	// TODO: heartbeatTxInterval to set RTC
+	dev.setRtcAlarmIn(0, 0, 10, 0);
 }
 
 void Rak7200::_gpsWakeup()
 {
+	dev.updateMillis();
 	if (dev.gpsDataAvailable())
 	{
 		dev.wakeupGps = true;
@@ -547,6 +553,7 @@ void Rak7200::_gpsWakeup()
 
 void Rak7200::_serialWakeup()
 {
+	dev.updateMillis();
 	if (Serial.available())
 	{
 		dev.wakeupSerial = true;
@@ -560,7 +567,7 @@ bool Rak7200::gpsDataAvailable()
 
 void Rak7200::updateMillis()
 {
-	uwTick = ((((_rtc.getDay()-1) * 24 + _rtc.getHours()) * 60 + _rtc.getMinutes()) * 60 + _rtc.getSeconds()) * 1000 + _rtc.getSubSeconds();
+	uwTick = ((((_rtc.getDay() - 1) * 24 + _rtc.getHours()) * 60 + _rtc.getMinutes()) * 60 + _rtc.getSeconds()) * 1000 + _rtc.getSubSeconds();
 }
 
 void Rak7200::setRtcAlarmIn(uint8_t days, uint8_t hours, uint8_t minutes, uint8_t seconds)

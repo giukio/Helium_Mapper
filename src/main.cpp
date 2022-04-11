@@ -38,6 +38,8 @@
 #include <lora.h>
 #include <STM32LowPower.h>
 
+#define SIMULATE_LORA false
+
 enum eDeviceState
 {
 	DEVICE_STATE_INIT,
@@ -131,7 +133,7 @@ void loop()
 	}
 	case DEVICE_STATE_JOIN:
 	{
-		if (LMIC.devaddr != 0)
+		if (LMIC.devaddr != 0 || SIMULATE_LORA)
 		{
 			if (dev.wakeupRtc)
 			{
@@ -156,7 +158,8 @@ void loop()
 		dev.getGpsFix();
 		Serial.print("Fix status: ");
 		Serial.println(dev.fix.status);
-		isGpsValid = (dev.fix.valid.location && (dev.fix.satellites >= 4));
+		// isGpsValid = (dev.fix.valid.location && (dev.fix.satellites >= 4));
+		isGpsValid = dev.fix.status == gps_fix::status_t::STATUS_STD;
 		digitalWrite(RAK7200_S76G_GREEN_LED, isGpsValid ? LOW : HIGH);
 		isMoving = dev.isMoving();
 
@@ -206,8 +209,9 @@ void loop()
 		location.lon = (int32_t)(dev.fix.longitudeL());
 		location.alt = (int32_t)(dev.fix.altitude_cm());
 		lora.UpdateOrAppendParameter(LoraParameter(location, LoraParameter::Kind::gpsMinimal));
-		do_send_mapping(lora.getSendjob(2));
-
+#if SIMULATE_LORA == false
+			do_send_mapping(lora.getSendjob(2));
+#endif
 		deviceState = DEVICE_STATE_SEND_WAIT_TX;
 		break;
 	}
@@ -215,8 +219,6 @@ void loop()
 	{
 		digitalWrite(RAK7200_S76G_BLUE_LED, LOW);
 		lastHeartBeat = millis();
-		// TODO: heartbeatTxInterval to set RTC
-		dev.setRtcAlarmIn(0, 0, 10, 0);
 		Serial.print(millis());
 		Serial.println(": Sending Heartbeat");
 		lora.UpdateOrAppendParameter(LoraParameter((uint16_t)(dev.getTemperature() * 10), LoraParameter::Kind::temperature));
@@ -229,14 +231,15 @@ void loop()
 		lora.BuildPacket();
 		lora.PrintPacket();
 
-		do_send(lora.getSendjob(1));
-
+#if SIMULATE_LORA == false
+			do_send(lora.getSendjob(1));
+#endif
 		deviceState = DEVICE_STATE_SEND_WAIT_TX;
 		break;
 	}
 	case DEVICE_STATE_SEND_WAIT_TX:
 	{
-		if (txComplete)
+		if (txComplete || SIMULATE_LORA)
 		{
 			deviceState = DEVICE_STATE_IDLE;
 		}
@@ -262,7 +265,6 @@ void loop()
 		dev.wakeupRtc = false;
 		dev.wakeupSerial = false;
 		LowPower.deepSleep();
-		dev.updateMillis();
 
 		Serial.println("\r\nWoke up from sleep!");
 		deviceState = DEVICE_STATE_INIT;
