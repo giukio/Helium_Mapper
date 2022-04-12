@@ -39,6 +39,7 @@
 #include <lora.h>
 #include <STM32LowPower.h>
 #include <at.h>
+#include <Streamers.h>
 
 Rak7200::Rak7200()
 {
@@ -107,9 +108,6 @@ void Rak7200::setGps()
 		yield();
 	_GNSS->begin(S7xG_CXD5603_BAUD_RATE);
 
-	LowPower.enableWakeupFrom(_GNSS, NULL);
-	Serial.println("Start deep sleep wakeup from Serial");
-
 	// power on GNSS
 	Serial.println("Powering On GNSS");
 	pinMode(RAK7200_S76G_CXD5603_POWER_ENABLE, OUTPUT);
@@ -131,8 +129,19 @@ void Rak7200::setGps()
 	_GNSS->write("@BSSL 0x21\r\n"); // GGA and RMC
 	Serial.println(_GNSS->readStringUntil('\n'));
 
-	_GNSS->write("@GPOS 44350886 11690879 1000<CR><LF>\r\n"); // @GPOS: Receiver position setting (ellipsoidal coordinates)
+	_GNSS->write("@GPOS 48304339 11912833 1000\r\n"); // @GPOS: Receiver position setting (ellipsoidal coordinates)
 	Serial.println(_GNSS->readStringUntil('\n'));
+
+	_GNSS->write("@GTIM 2022 4 12 1 55 0\r\n"); // @GTIM: Time setting
+	Serial.println(_GNSS->readStringUntil('\n'));
+
+	_GNSS->write(" @CSBR 9600\r\n"); // @CSBR: UART0 baud rate setting
+	String ret = _GNSS->readStringUntil('\n');
+	Serial.println(ret);
+	if (ret.indexOf("[CSBR] Done") != -1)
+	{
+		_GNSS->begin(9600);
+	}
 
 	_GNSS->write("@GSR\r\n"); // Hot Start for TTFF
 	Serial.println(_GNSS->readStringUntil('\n'));
@@ -200,7 +209,9 @@ gps_fix Rak7200::getGpsFix()
 	while (Rak7200::gps.available(*_GNSS))
 	{
 		Rak7200::fix = Rak7200::gps.read();
+		trace_all(Serial, gps, fix);
 	}
+
 	return Rak7200::fix;
 }
 

@@ -38,7 +38,7 @@
 #include <lora.h>
 #include <STM32LowPower.h>
 
-#define SIMULATE_LORA false
+#define SIMULATE_LORA true
 
 enum eDeviceState
 {
@@ -93,7 +93,7 @@ void loop()
 	extern uint64_t heartbeatTxInterval;
 	static uint32_t lastMap;
 	extern uint64_t mapTxInterval;
-	uint64_t WaitGpsFixInterval = 300;
+	uint64_t WaitGpsFixInterval = 3600;
 	static eDeviceState lastState;
 	bool isGpsValid;
 	bool isMoving;
@@ -114,6 +114,7 @@ void loop()
 	case DEVICE_STATE_INIT:
 	{
 		digitalWrite(RAK7200_S76G_RED_LED, LOW);
+		lastSesorLoop = millis();
 		dev.getTemperature(); // Temp bug workaround
 		if (dev.wakeupPin)
 		{
@@ -156,8 +157,18 @@ void loop()
 	case DEVICE_STATE_WAIT_GPS_FIX:
 	{
 		dev.getGpsFix();
-		Serial.print("Fix status: ");
-		Serial.println(dev.fix.status);
+
+		// Serial.print("Fix status: ");
+		// Serial.println(dev.fix.status);
+		// Serial.print("Date: ");
+		// // Serial.println(dev.fix.dateTime);
+		// Serial.print(dev.fix.dateTime.date);
+		// Serial.print(dev.fix.dateTime.month);
+		// Serial.print(dev.fix.dateTime.year);
+		// Serial.print(dev.fix.dateTime.hours);
+		// Serial.print(dev.fix.dateTime.minutes);
+		// Serial.println(dev.fix.dateTime.seconds);
+
 		// isGpsValid = (dev.fix.valid.location && (dev.fix.satellites >= 4));
 		isGpsValid = dev.fix.status == gps_fix::status_t::STATUS_STD;
 		digitalWrite(RAK7200_S76G_GREEN_LED, isGpsValid ? LOW : HIGH);
@@ -178,7 +189,7 @@ void loop()
 			Serial.println(": GPS fix not found");
 			deviceState = DEVICE_STATE_SLEEP;
 		}
-		else
+		else if ((millis() - lastSesorLoop) >= 150)		// Time only for debug, prevents spurious wakeups while receving all nmea sentences
 		{
 			deviceState = DEVICE_STATE_IDLE;
 		}
@@ -210,7 +221,7 @@ void loop()
 		location.alt = (int32_t)(dev.fix.altitude_cm());
 		lora.UpdateOrAppendParameter(LoraParameter(location, LoraParameter::Kind::gpsMinimal));
 #if SIMULATE_LORA == false
-			do_send_mapping(lora.getSendjob(2));
+		do_send_mapping(lora.getSendjob(2));
 #endif
 		deviceState = DEVICE_STATE_SEND_WAIT_TX;
 		break;
@@ -232,7 +243,7 @@ void loop()
 		lora.PrintPacket();
 
 #if SIMULATE_LORA == false
-			do_send(lora.getSendjob(1));
+		do_send(lora.getSendjob(1));
 #endif
 		deviceState = DEVICE_STATE_SEND_WAIT_TX;
 		break;
