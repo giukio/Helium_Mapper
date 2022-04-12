@@ -126,13 +126,15 @@ void Rak7200::setGps()
 	_GNSS->write("@GNS 0xF\r\n"); // Configure GPS, GLONASS, SBAS, QZSS
 	Serial.println(_GNSS->readStringUntil('\n'));
 
-	_GNSS->write("@BSSL 0x21\r\n"); // GGA and RMC
+	_GNSS->write("@BSSL 0xA1\r\n"); // GGA and RMC and ZDA
 	Serial.println(_GNSS->readStringUntil('\n'));
 
-	_GNSS->write("@GPOS 48304339 11912833 1000\r\n"); // @GPOS: Receiver position setting (ellipsoidal coordinates)
-	Serial.println(_GNSS->readStringUntil('\n'));
+	// _GNSS->write("@GPOS 48304339 11912833 1000\r\n"); // @GPOS: Receiver position setting (ellipsoidal coordinates)
+	// Serial.println(_GNSS->readStringUntil('\n'));
 
-	_GNSS->write("@GTIM 2022 4 12 1 55 0\r\n"); // @GTIM: Time setting
+	// _GNSS->write("@GTIM 2022 04 12 11 27 00\r\n");
+	_GNSS->printf("@GTIM 20%02d %02d %02d %02d %02d %02d\r\n", _rtc.getYear(), _rtc.getMonth(), _rtc.getDay(), _rtc.getHours(), _rtc.getMinutes(), _rtc.getSeconds());
+	Serial.printf("@GTIM 20%02d %02d %02d %02d %02d %02d\r\n", _rtc.getYear(), _rtc.getMonth(), _rtc.getDay(), _rtc.getHours(), _rtc.getMinutes(), _rtc.getSeconds());
 	Serial.println(_GNSS->readStringUntil('\n'));
 
 	_GNSS->write(" @CSBR 9600\r\n"); // @CSBR: UART0 baud rate setting
@@ -183,6 +185,11 @@ bool Rak7200::wakeGps()
 		}
 		if (wakeOk)
 		{
+			//_GNSS->write("@GTIM 2022 4 12 8 30 0\r\n"); // @GTIM: Time setting
+			_GNSS->printf("@GTIM 20%02d %02d %02d %02d %02d %02d\r\n", _rtc.getYear(), _rtc.getMonth(), _rtc.getDay(), _rtc.getHours(), _rtc.getMinutes(), _rtc.getSeconds());
+			Serial.printf("@GTIM 20%02d %02d %02d %02d %02d %02d\r\n", _rtc.getYear(), _rtc.getMonth(), _rtc.getDay(), _rtc.getHours(), _rtc.getMinutes(), _rtc.getSeconds());
+			Serial.println(_GNSS->readStringUntil('\n'));
+
 			_GNSS->write("@GSR\r\n"); // Hot Start for TTFF
 			Serial.println(_GNSS->readStringUntil('\n'));
 		}
@@ -196,12 +203,17 @@ bool Rak7200::wakeGps()
 
 void Rak7200::sleepGps()
 {
+	_GNSS->readStringUntil('\n');
 	gpsSleeping = true;
 	_GNSS->write("@GSTP\r\n"); // Stop positioning
 	Serial.println(_GNSS->readStringUntil('\n'));
 
+	_GNSS->write("@BUP\r\n"); // @BUP: Backup data save
+	Serial.println(_GNSS->readStringUntil('\n'));
+
 	_GNSS->write("@SLP 0\r\n"); // Start Sleep Mode 0
 	Serial.println(_GNSS->readStringUntil('\n'));
+	delay(100);
 }
 
 gps_fix Rak7200::getGpsFix()
@@ -210,6 +222,8 @@ gps_fix Rak7200::getGpsFix()
 	{
 		Rak7200::fix = Rak7200::gps.read();
 		trace_all(Serial, gps, fix);
+		// Serial.println(rtcmillis());
+		this->setRtcTimeFromGps();
 	}
 
 	return Rak7200::fix;
@@ -378,15 +392,22 @@ void Rak7200::Lis3dhInt1_ISR()
 
 void Rak7200::deviceMoving()
 {
-	if (this->isMoving() == false)
+	bool moving = this->isMoving();
+	this->_lastMotionMillis = millis();
+
+	if (moving == false)
 	{
 		this->Lis3dhInt1Flag = true;
 		// Device just started moving
 		Serial.print(_lastMotionMillis);
-		Serial.println(": Motion detected.");
+		Serial.println(": Motion just started.");
 	}
-
-	this->_lastMotionMillis = millis();
+	else
+	{
+		// Device alrrady moving
+		Serial.print(_lastMotionMillis);
+		Serial.println(": Motion continue");
+	}
 }
 
 bool Rak7200::isMoving()
@@ -520,9 +541,9 @@ void Rak7200::configRtc()
 	// Select RTC clock source: LSI_CLOCK, LSE_CLOCK or HSE_CLOCK.
 	// By default the LSI is selected as source.
 	_rtc.setClockSource(STM32RTC::LSE_CLOCK);
-	_rtc.begin(true);
-	_rtc.setTime(0, 0, 0, 0);
-	_rtc.setDate(1, 1, 0);
+	_rtc.begin(false);
+	// _rtc.setTime(0, 0, 0, 0);
+	// _rtc.setDate(1, 1, 0);
 }
 
 void Rak7200::configLowPower()
@@ -581,6 +602,14 @@ void Rak7200::updateMillis()
 	uwTick = ((((_rtc.getDay() - 1) * 24 + _rtc.getHours()) * 60 + _rtc.getMinutes()) * 60 + _rtc.getSeconds()) * 1000 + _rtc.getSubSeconds();
 }
 
+uint64_t rtcmillis()
+{
+	STM32RTC &rtc = STM32RTC::getInstance();
+	Serial.println("Getting Y2kEpoch");
+	Serial.flush();
+	return rtc.getY2kEpoch() * 1000 + rtc.getSubSeconds();
+}
+
 void Rak7200::setRtcAlarmIn(uint8_t days, uint8_t hours, uint8_t minutes, uint8_t seconds)
 {
 	uint8_t sec = 0;
@@ -609,6 +638,17 @@ void Rak7200::setRtcAlarmIn(uint8_t days, uint8_t hours, uint8_t minutes, uint8_
 	_rtc.setAlarmDay(dys);
 	_rtc.setAlarmTime(hrs, mn, sec, 0);
 	_rtc.enableAlarm(_rtc.MATCH_DHHMMSS);
+}
+
+void Rak7200::setRtcTimeFromGps()
+{
+	if ((this->fix.dateTime.year < 80) && this->fix.valid.date && this->fix.valid.time)
+	{
+		Serial.printf("Date %d-%d-%d %d:%d:%d\r\n", fix.dateTime.date, fix.dateTime.month, fix.dateTime.year, fix.dateTime.hours, fix.dateTime.minutes, fix.dateTime.seconds);
+		_rtc.setDate(this->fix.dateTime.date, this->fix.dateTime.month, this->fix.dateTime.year);
+		_rtc.setTime(this->fix.dateTime.hours, this->fix.dateTime.minutes, this->fix.dateTime.seconds, 0);
+		this->updateMillis();
+	}
 }
 
 /**

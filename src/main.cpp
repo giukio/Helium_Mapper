@@ -38,7 +38,7 @@
 #include <lora.h>
 #include <STM32LowPower.h>
 
-#define SIMULATE_LORA true
+#define SIMULATE_LORA false
 
 enum eDeviceState
 {
@@ -95,19 +95,18 @@ void loop()
 	extern uint64_t mapTxInterval;
 	uint64_t WaitGpsFixInterval = 3600;
 	static eDeviceState lastState;
-	bool isGpsValid;
-	bool isMoving;
+	static bool isGpsValid;
 
 	readAtCommands();
 	os_runloop_once();
 
-	if (lastState != deviceState)
-	{
-		Serial.print(millis());
-		Serial.print(": SM: ");
-		Serial.println(deviceState);
-		lastState = deviceState;
-	}
+	// if (lastState != deviceState)
+	// {
+	// 	Serial.print(millis());
+	// 	Serial.print(": SM: ");
+	// 	Serial.println(deviceState);
+	// 	lastState = deviceState;
+	// }
 
 	switch (deviceState)
 	{
@@ -160,19 +159,10 @@ void loop()
 
 		// Serial.print("Fix status: ");
 		// Serial.println(dev.fix.status);
-		// Serial.print("Date: ");
-		// // Serial.println(dev.fix.dateTime);
-		// Serial.print(dev.fix.dateTime.date);
-		// Serial.print(dev.fix.dateTime.month);
-		// Serial.print(dev.fix.dateTime.year);
-		// Serial.print(dev.fix.dateTime.hours);
-		// Serial.print(dev.fix.dateTime.minutes);
-		// Serial.println(dev.fix.dateTime.seconds);
 
-		// isGpsValid = (dev.fix.valid.location && (dev.fix.satellites >= 4));
+
 		isGpsValid = dev.fix.status == gps_fix::status_t::STATUS_STD;
 		digitalWrite(RAK7200_S76G_GREEN_LED, isGpsValid ? LOW : HIGH);
-		isMoving = dev.isMoving();
 
 		if (isGpsValid)
 		{
@@ -199,13 +189,17 @@ void loop()
 	case DEVICE_STATE_CYCLE:
 	{
 
-		if (isGpsValid && isMoving && ((millis() - lastMap) >= mapTxInterval * 1000))
+		if (isGpsValid && dev.isMoving() && ((millis() - lastMap) >= (mapTxInterval * 1000)))
 		{
 			deviceState = DEVICE_STATE_SEND_MINIMAL;
 		}
-		else if (isMoving == false)
+		else if (dev.isMoving() == false)
 		{
 			deviceState = DEVICE_STATE_SLEEP;
+		}
+		else
+		{
+			deviceState = DEVICE_STATE_IDLE;
 		}
 		break;
 	}

@@ -90,6 +90,7 @@
 #define NV_APPKEY 0x0B10
 
 extern class Rak7200 dev;
+uint64_t rtcmillis();
 
 class Eeprom
 {
@@ -156,6 +157,7 @@ public:
 	bool gpsDataAvailable();
 	void updateMillis();
 	void setRtcAlarmIn(uint8_t days, uint8_t hours, uint8_t minutes, uint8_t seconds);
+	void setRtcTimeFromGps();
 
 private:
 	bool GNSS_probe();
