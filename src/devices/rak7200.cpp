@@ -644,9 +644,14 @@ void Rak7200::setRtcTimeFromGps()
 {
 	if ((this->fix.dateTime.year < 80) && this->fix.valid.date && this->fix.valid.time)
 	{
+		uint8_t dd =  _rtc.getAlarmDay() - _rtc.getDay();
+		uint8_t hh =  _rtc.getAlarmHours() - _rtc.getHours();
+		uint8_t mm =  _rtc.getAlarmMinutes() - _rtc.getMinutes();
+		uint8_t ss =  _rtc.getAlarmSeconds() - _rtc.getSeconds();
 		Serial.printf("Date %d-%d-%d %d:%d:%d\r\n", fix.dateTime.date, fix.dateTime.month, fix.dateTime.year, fix.dateTime.hours, fix.dateTime.minutes, fix.dateTime.seconds);
 		_rtc.setDate(this->fix.dateTime.date, this->fix.dateTime.month, this->fix.dateTime.year);
 		_rtc.setTime(this->fix.dateTime.hours, this->fix.dateTime.minutes, this->fix.dateTime.seconds, 0);
+		this->setRtcAlarmIn(dd,hh,mm,ss);
 		this->updateMillis();
 	}
 }
