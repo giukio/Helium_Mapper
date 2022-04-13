@@ -160,8 +160,7 @@ void loop()
 		// Serial.print("Fix status: ");
 		// Serial.println(dev.fix.status);
 
-
-		isGpsValid = dev.fix.status == gps_fix::status_t::STATUS_STD;
+		isGpsValid = (dev.fix.status == gps_fix::status_t::STATUS_STD) && dev.fix.valid.status && dev.fix.valid.location && dev.fix.valid.altitude;
 		digitalWrite(RAK7200_S76G_GREEN_LED, isGpsValid ? LOW : HIGH);
 
 		if (isGpsValid)
@@ -179,7 +178,7 @@ void loop()
 			Serial.println(": GPS fix not found");
 			deviceState = DEVICE_STATE_SLEEP;
 		}
-		else if ((millis() - lastSesorLoop) >= 150)		// Time only for debug, prevents spurious wakeups while receving all nmea sentences
+		else // if ((millis() - lastSesorLoop) >= 150) // Time only for debug, prevents spurious wakeups while receving all nmea sentences
 		{
 			deviceState = DEVICE_STATE_IDLE;
 		}
@@ -217,6 +216,7 @@ void loop()
 #if SIMULATE_LORA == false
 		do_send_mapping(lora.getSendjob(2));
 #endif
+		dev.fix.valid.init();	// Require new fix for new message
 		deviceState = DEVICE_STATE_SEND_WAIT_TX;
 		break;
 	}
