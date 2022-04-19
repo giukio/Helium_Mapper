@@ -157,6 +157,7 @@ public:
 	bool gpsDataAvailable();
 	void updateMillis();
 	void setRtcAlarmIn(uint8_t days, uint8_t hours, uint8_t minutes, uint8_t seconds);
+	void setRtcAlarmIn(uint32_t seconds);
 	void setRtcTimeFromGps();
 
 private:

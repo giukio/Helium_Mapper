@@ -33,8 +33,8 @@
  */
 #include <lora.h>
 
-uint64_t heartbeatTxInterval = 600;
-uint64_t mapTxInterval = 10;
+uint64_t heartbeatTxInterval = 30 * 60 * 1000;
+uint64_t mapTxInterval = 60 * 1000;
 bool txComplete = false;
 
 Lora lora;
@@ -160,6 +160,19 @@ LoraParameter *Lora::getParameter(LoraParameter::Kind k)
 	return NULL;
 }
 
+bool Lora::removeParameter(LoraParameter::Kind k)
+{
+	for (int i = 0; i < _parameters.size(); i++)
+	{
+		if (_parameters.at(i).GetKind() == k)
+		{
+			_parameters.erase(_parameters.begin() + i);
+			return true;
+		}
+	}
+	return false;
+}
+
 osjob_t *Lora::getSendjob(uint8_t port)
 {
 	osjob_t *j;
@@ -182,7 +195,9 @@ osjob_t *Lora::getSendjob(uint8_t port)
 void Lora::setTxData()
 {
 	this->BuildPacket();
-	LMIC_setTxData2(1, this->_packet.data(), this->_packet.size(), 0);
+	LMIC_setAdrMode(0);
+	LMIC_setDrTxpow(DR_SF12, 14);
+	LMIC_setTxData2_strict(1, this->_packet.data(), this->_packet.size(), 0);
 	this->PrintPacket();
 }
 
@@ -211,6 +226,34 @@ void Lora::PrintPacket()
 		printHex2(p);
 	}
 	Serial.println();
+}
+
+bool Lora::isJoined()
+{
+	return LMIC.devaddr != 0;
+}
+
+bool Lora::readyToTx()
+{
+	// probabilmente LMIC.globalDutyAvail o LMIC.txend hanno l'os_getTime()
+	// per la prossima trasmissione
+	
+	// LMIC_setTxData2(1, mydata, sizeof(mydata) - 1, 0);
+	// // At this point LMIC.txend is still the end time of the last packet?
+	// if (LMIC.txend < os_getTime())
+	// {
+	// 	Serial.print(F("Will send right away"));
+	// }
+	// else
+	// {
+	// 	Serial.print(F("Packet queued"));
+	// }
+	return LMIC_queryTxReady();
+}
+
+bool Lora::dioTxComplete()
+{
+	return (digitalRead(S7xx_SX127x_DIO0) == HIGH);
 }
 
 Lora::~Lora()
@@ -411,7 +454,9 @@ void do_send_mapping(osjob_t *j)
 		LoraParameter *lp = lora.getParameter(LoraParameter::Kind::gpsMinimal);
 		if (lp != NULL)
 		{
-			LMIC_setTxData2(2, lp->GetData().data(), lp->GetData().size(), 0);
+			LMIC_setAdrMode(0);
+			LMIC_setDrTxpow(DR_SF7, 14);
+			LMIC_setTxData2_strict(2, lp->GetData().data(), lp->GetData().size(), 0);
 			Serial.println(F("Packet queued"));
 			txComplete = false;
 		}
@@ -440,6 +485,7 @@ void LmicInit()
 	LMIC_setClockError(MAX_CLOCK_ERROR * 20 / 100);
 
 	LMIC_setLinkCheckMode(0);
+	LMIC_setAdrMode(0);
 	LMIC_setDrTxpow(DR_SF7, 14);
 	// LMIC_setupBand(BAND_MILLI,13,10);
 	// LMIC_selectSubBand(1);

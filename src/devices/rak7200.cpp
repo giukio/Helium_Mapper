@@ -570,8 +570,7 @@ void Rak7200::_rtcWakeup(void *data)
 {
 	dev.updateMillis();
 	dev.wakeupRtc = true;
-	// TODO: heartbeatTxInterval to set RTC
-	dev.setRtcAlarmIn(0, 0, 10, 0);
+	dev.setRtcAlarmIn(heartbeatTxInterval);
 }
 
 void Rak7200::_gpsWakeup()
@@ -610,48 +609,42 @@ uint64_t rtcmillis()
 	return rtc.getY2kEpoch() * 1000 + rtc.getSubSeconds();
 }
 
+void Rak7200::setRtcAlarmIn(uint32_t milli)
+{
+	uint32_t alarm = (((_rtc.getDay() * 24 + _rtc.getHours()) * 60 + _rtc.getMinutes()) * 60 + _rtc.getSeconds()) * 1000 + milli;
+
+	uint8_t dd = alarm / 3600000 / 24;
+	uint8_t hh = alarm / 3600000 % 24;
+	uint8_t mm = alarm / 60000 % 60;
+	uint8_t ss = alarm / 1000 % 60;
+	uint32_t ms = alarm % 1000;
+	_rtc.setAlarmDay(dd);
+	_rtc.setAlarmTime(hh, mm, ss, ms);
+	_rtc.enableAlarm(_rtc.MATCH_DHHMMSS);
+	Serial.printf("Alarm set at %d %d:%d:%d.%3d\r\n", _rtc.getAlarmDay(), _rtc.getAlarmHours(), _rtc.getAlarmMinutes(), _rtc.getAlarmSeconds(), _rtc.getAlarmSubSeconds());
+}
+
 void Rak7200::setRtcAlarmIn(uint8_t days, uint8_t hours, uint8_t minutes, uint8_t seconds)
 {
-	uint8_t sec = 0;
-	uint8_t mn = 0;
-	uint8_t hrs = 0;
-	uint8_t dys = 0;
-	uint8_t x = 0;
-	bool c = false;
-
-	x = _rtc.getSeconds() + seconds;
-	c = (x >= 60);
-	sec = c ? (x - 60) : x;
-
-	x = _rtc.getMinutes() + minutes + (c ? 1 : 0);
-	c = (x >= 60);
-	mn = c ? (x - 60) : x;
-
-	x = _rtc.getHours() + hours + (c ? 1 : 0);
-	c = (x >= 24);
-	hrs = c ? (x - 24) : x;
-
-	x = _rtc.getDay() + days + (c ? 1 : 0);
-	c = (x > 31);
-	dys = c ? (x - 31) : x;
-
-	_rtc.setAlarmDay(dys);
-	_rtc.setAlarmTime(hrs, mn, sec, 0);
-	_rtc.enableAlarm(_rtc.MATCH_DHHMMSS);
+	this->setRtcAlarmIn((uint32_t)(((days * 24 + hours) * 60 + minutes) * 60 + seconds) * 1000);
 }
 
 void Rak7200::setRtcTimeFromGps()
 {
 	if ((this->fix.dateTime.year < 80) && this->fix.valid.date && this->fix.valid.time)
 	{
-		uint8_t dd =  _rtc.getAlarmDay() - _rtc.getDay();
-		uint8_t hh =  _rtc.getAlarmHours() - _rtc.getHours();
-		uint8_t mm =  _rtc.getAlarmMinutes() - _rtc.getMinutes();
-		uint8_t ss =  _rtc.getAlarmSeconds() - _rtc.getSeconds();
-		Serial.printf("Date %d-%d-%d %d:%d:%d\r\n", fix.dateTime.date, fix.dateTime.month, fix.dateTime.year, fix.dateTime.hours, fix.dateTime.minutes, fix.dateTime.seconds);
+		uint32_t now = ((((_rtc.getDay() - 1) * 24 + _rtc.getHours()) * 60 + _rtc.getMinutes()) * 60 + _rtc.getSeconds()) * 1000 + _rtc.getSubSeconds();
+		uint32_t alarm = ((((_rtc.getAlarmDay() - 1) * 24 + _rtc.getAlarmHours()) * 60 + _rtc.getAlarmMinutes()) * 60 + _rtc.getAlarmSeconds()) * 1000 + _rtc.getAlarmSubSeconds();
+		int64_t delta = alarm - now;
+		if (delta <= 0)
+		{
+			delta = heartbeatTxInterval;
+		}
+
+		Serial.printf("RTC date set at: %d-%d-%d %d:%d:%d\r\n", fix.dateTime.date, fix.dateTime.month, fix.dateTime.year, fix.dateTime.hours, fix.dateTime.minutes, fix.dateTime.seconds);
 		_rtc.setDate(this->fix.dateTime.date, this->fix.dateTime.month, this->fix.dateTime.year);
-		_rtc.setTime(this->fix.dateTime.hours, this->fix.dateTime.minutes, this->fix.dateTime.seconds, 0);
-		this->setRtcAlarmIn(dd,hh,mm,ss);
+		_rtc.setTime(this->fix.dateTime.hours, this->fix.dateTime.minutes, this->fix.dateTime.seconds, _rtc.getSubSeconds());
+		this->setRtcAlarmIn(delta);
 		this->updateMillis();
 	}
 }

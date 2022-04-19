@@ -90,23 +90,22 @@ void loop()
 	// put your main code here, to run repeatedly:
 	static uint32_t lastSesorLoop;
 	static uint32_t lastHeartBeat;
-	extern uint64_t heartbeatTxInterval;
 	static uint32_t lastMap;
-	extern uint64_t mapTxInterval;
-	uint64_t WaitGpsFixInterval = 3600;
+	uint64_t WaitGpsFixInterval = 600 * 1000;
 	static eDeviceState lastState;
 	static bool isGpsValid;
+	static NeoGPS::Location_t lastMapLocation;
 
 	readAtCommands();
 	os_runloop_once();
 
-	// if (lastState != deviceState)
-	// {
-	// 	Serial.print(millis());
-	// 	Serial.print(": SM: ");
-	// 	Serial.println(deviceState);
-	// 	lastState = deviceState;
-	// }
+	if (lastState != deviceState)
+	{
+		Serial.print(millis());
+		Serial.print(": SM: ");
+		Serial.println(deviceState);
+		lastState = deviceState;
+	}
 
 	switch (deviceState)
 	{
@@ -133,7 +132,7 @@ void loop()
 	}
 	case DEVICE_STATE_JOIN:
 	{
-		if (LMIC.devaddr != 0 || SIMULATE_LORA)
+		if (lora.isJoined() || SIMULATE_LORA)
 		{
 			if (dev.wakeupRtc)
 			{
@@ -142,8 +141,8 @@ void loop()
 			}
 			else if (dev.wakeupGps || dev.wakeupPin)
 			{
-				Serial.print(millis());
-				Serial.println(": Waiting for GPS Fix");
+				// Serial.print(millis());
+				// Serial.println(": Waiting for GPS Fix");
 				deviceState = DEVICE_STATE_WAIT_GPS_FIX;
 			}
 			else
@@ -157,28 +156,25 @@ void loop()
 	{
 		dev.getGpsFix();
 
-		// Serial.print("Fix status: ");
-		// Serial.println(dev.fix.status);
-
 		isGpsValid = (dev.fix.status == gps_fix::status_t::STATUS_STD) && dev.fix.valid.status && dev.fix.valid.location && dev.fix.valid.altitude;
 		digitalWrite(RAK7200_S76G_GREEN_LED, isGpsValid ? LOW : HIGH);
 
 		if (isGpsValid)
 		{
-			Serial.print(millis());
-			Serial.print(": GPS Fix valid, #sats: ");
-			Serial.println(dev.fix.satellites);
+			// Serial.print(millis());
+			// Serial.print(": GPS Fix valid, #sats: ");
+			// Serial.println(dev.fix.satellites);
 
 			lastWaitGpsFix = millis();
 			deviceState = DEVICE_STATE_CYCLE;
 		}
-		else if ((millis() - lastWaitGpsFix) >= WaitGpsFixInterval * 1000)
+		else if ((millis() - lastWaitGpsFix) >= WaitGpsFixInterval)
 		{
 			Serial.print(millis());
 			Serial.println(": GPS fix not found");
 			deviceState = DEVICE_STATE_SLEEP;
 		}
-		else // if ((millis() - lastSesorLoop) >= 150) // Time only for debug, prevents spurious wakeups while receving all nmea sentences
+		else // if ((millis() - lastSesorLoop) >= 300) // Time only for debug, prevents spurious wakeups while receving all nmea sentences
 		{
 			deviceState = DEVICE_STATE_IDLE;
 		}
@@ -187,8 +183,9 @@ void loop()
 	}
 	case DEVICE_STATE_CYCLE:
 	{
-
-		if (isGpsValid && dev.isMoving() && ((millis() - lastMap) >= (mapTxInterval * 1000)))
+		bool mapTime = ((millis() - lastMap) >= (mapTxInterval));
+		bool mapDistance = dev.fix.location.DistanceKm(lastMapLocation) > 0.15F;
+		if (lora.readyToTx() && isGpsValid && dev.isMoving() && (mapTime || mapDistance))
 		{
 			deviceState = DEVICE_STATE_SEND_MINIMAL;
 		}
@@ -208,6 +205,7 @@ void loop()
 		lastMap = millis();
 		Serial.print(millis());
 		Serial.println(": Sending Map");
+		lastMapLocation = dev.fix.location;
 		LoraParameter::gps location;
 		location.lat = (int32_t)(dev.fix.latitudeL());
 		location.lon = (int32_t)(dev.fix.longitudeL());
@@ -216,16 +214,12 @@ void loop()
 #if SIMULATE_LORA == false
 		do_send_mapping(lora.getSendjob(2));
 #endif
-		dev.fix.valid.init();	// Require new fix for new message
+		dev.fix.valid.init(); // Require new fix for new message
 		deviceState = DEVICE_STATE_SEND_WAIT_TX;
 		break;
 	}
 	case DEVICE_STATE_SEND_HEARTBEAT:
 	{
-		digitalWrite(RAK7200_S76G_BLUE_LED, LOW);
-		lastHeartBeat = millis();
-		Serial.print(millis());
-		Serial.println(": Sending Heartbeat");
 		lora.UpdateOrAppendParameter(LoraParameter((uint16_t)(dev.getTemperature() * 10), LoraParameter::Kind::temperature));
 
 		pinMode(RAK7200_S76G_ADC_VBAT, INPUT_ANALOG);
@@ -233,19 +227,29 @@ void loop()
 		float voltage = (float(vBatAdc) / 4096 * 3.30 / 0.6 * 10.0);
 		lora.UpdateOrAppendParameter(LoraParameter((uint16_t)(voltage * 100.0), LoraParameter::Kind::voltage));
 
-		lora.BuildPacket();
-		lora.PrintPacket();
+		if (lora.readyToTx())
+		{
+			lastHeartBeat = millis();
+			Serial.print(millis());
+			Serial.println(": Sending Heartbeat");
+			digitalWrite(RAK7200_S76G_BLUE_LED, LOW);
+			lora.BuildPacket();
+			lora.PrintPacket();
 
 #if SIMULATE_LORA == false
-		do_send(lora.getSendjob(1));
+			do_send(lora.getSendjob(1));
 #endif
-		deviceState = DEVICE_STATE_SEND_WAIT_TX;
+			dev.wakeupRtc = false;
+			deviceState = DEVICE_STATE_SEND_WAIT_TX;
+		}
+
 		break;
 	}
 	case DEVICE_STATE_SEND_WAIT_TX:
 	{
-		if (txComplete || SIMULATE_LORA)
+		if (lora.dioTxComplete() || txComplete || SIMULATE_LORA)
 		{
+			lora.removeParameter(LoraParameter::Kind::gpsMinimal);
 			deviceState = DEVICE_STATE_IDLE;
 		}
 		break;
@@ -258,8 +262,8 @@ void loop()
 	}
 	case DEVICE_STATE_IDLE:
 	{
-		Serial.print(millis());
-		Serial.println(": Going to Sleep now.");
+		// Serial.print(millis());
+		// Serial.println(": Going to Sleep now.");
 		Serial.flush();
 		digitalWrite(RAK7200_S76G_RED_LED, HIGH);
 		digitalWrite(RAK7200_S76G_GREEN_LED, HIGH);
@@ -267,7 +271,6 @@ void loop()
 
 		dev.wakeupGps = false;
 		dev.wakeupPin = false;
-		dev.wakeupRtc = false;
 		dev.wakeupSerial = false;
 		LowPower.deepSleep();
 
