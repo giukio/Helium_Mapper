@@ -235,20 +235,17 @@ bool Lora::isJoined()
 
 bool Lora::readyToTx()
 {
-	// probabilmente LMIC.globalDutyAvail o LMIC.txend hanno l'os_getTime()
-	// per la prossima trasmissione
-	
-	// LMIC_setTxData2(1, mydata, sizeof(mydata) - 1, 0);
-	// // At this point LMIC.txend is still the end time of the last packet?
-	// if (LMIC.txend < os_getTime())
-	// {
-	// 	Serial.print(F("Will send right away"));
-	// }
-	// else
-	// {
-	// 	Serial.print(F("Packet queued"));
-	// }
-	return LMIC_queryTxReady();
+	Serial.printf("%d: %d - %s\r\n", os_getTime(), LMICbandplan_nextTx(os_getTime()), LMIC_queryTxReady() ? "true" : "false");
+	return (os_getTime() > LMICbandplan_nextTx(os_getTime())) && LMIC_queryTxReady();
+}
+
+uint32_t Lora::readyToTxIn()
+{
+	int64_t delta = LMICbandplan_nextTx(os_getTime()) - os_getTime();
+	Serial.print("Delta: ");
+	Serial.println(delta);
+
+	return delta <= 0 ? 0 : (uint32_t)(delta / (int64_t)((int64_t)sec2osticks(1) / (int64_t)1000)); // Return ms
 }
 
 bool Lora::dioTxComplete()

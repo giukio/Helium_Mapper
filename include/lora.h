@@ -111,6 +111,7 @@ public:
     void PrintPacket();
     bool isJoined();
     bool readyToTx();
+    uint32_t readyToTxIn();
     bool dioTxComplete();
     ~Lora();
 };
