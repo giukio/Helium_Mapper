@@ -91,12 +91,10 @@ void loop()
 	static uint32_t lastSesorLoop;
 	static uint32_t lastHeartBeat;
 	static uint32_t lastMap;
-	uint64_t WaitGpsFixInterval = 20 * 60 * 1000;
+	uint64_t WaitGpsFixInterval = 600 * 1000;
 	static eDeviceState lastState;
-	static uint32_t lastStateMilli = millis();
 	static bool isGpsValid;
 	static NeoGPS::Location_t lastMapLocation;
-	static bool forceMap = true;
 
 	readAtCommands();
 	os_runloop_once();
@@ -107,13 +105,6 @@ void loop()
 		Serial.print(": SM: ");
 		Serial.println(deviceState);
 		lastState = deviceState;
-		lastStateMilli = millis();
-	}
-	else if ((millis() - lastStateMilli) > 60000) // SM watchdog
-	{
-		Serial.println("SM Watchdog tripped, resetting...");
-		deviceState = DEVICE_STATE_INIT;
-		lastStateMilli = millis();
 	}
 
 	switch (deviceState)
@@ -129,7 +120,6 @@ void loop()
 			{
 				lastWaitGpsFix = millis();
 				Serial.println("Wakeup from External Pin.");
-				forceMap = true;
 			}
 			else
 			{
@@ -151,6 +141,8 @@ void loop()
 			}
 			else if (dev.wakeupGps || dev.wakeupPin)
 			{
+				// Serial.print(millis());
+				// Serial.println(": Waiting for GPS Fix");
 				deviceState = DEVICE_STATE_WAIT_GPS_FIX;
 			}
 			else
@@ -169,14 +161,17 @@ void loop()
 
 		if (isGpsValid)
 		{
+			// Serial.print(millis());
+			// Serial.print(": GPS Fix valid, #sats: ");
+			// Serial.println(dev.fix.satellites);
+
 			lastWaitGpsFix = millis();
 			deviceState = DEVICE_STATE_CYCLE;
 		}
 		else if ((millis() - lastWaitGpsFix) >= WaitGpsFixInterval)
 		{
 			Serial.print(millis());
-			Serial.print(": GPS fix not found, lastWaitGpsFix:");
-			Serial.println(lastWaitGpsFix);
+			Serial.println(": GPS fix not found");
 			deviceState = DEVICE_STATE_SLEEP;
 		}
 		else // if ((millis() - lastSesorLoop) >= 300) // Time only for debug, prevents spurious wakeups while receving all nmea sentences
@@ -190,12 +185,11 @@ void loop()
 	{
 		bool mapTime = ((millis() - lastMap) >= (mapTxInterval));
 		bool mapDistance = dev.fix.location.DistanceKm(lastMapLocation) > 0.15F;
-		Serial.printf("readyToTx:%d isGpsValid:%d isMoving:%d forceMap:%d mapTime:%d mapDistance:%d\r\n", lora.readyToTx(), isGpsValid, dev.isMoving(), forceMap, mapTime, mapDistance);
-		if (lora.readyToTx() && isGpsValid && (dev.isMoving() || forceMap) && (mapTime || mapDistance))
+		if (lora.readyToTx() && isGpsValid && dev.isMoving() && (mapTime || mapDistance))
 		{
 			deviceState = DEVICE_STATE_SEND_MINIMAL;
 		}
-		else if (dev.isMoving() == false && forceMap == false)
+		else if (dev.isMoving() == false)
 		{
 			deviceState = DEVICE_STATE_SLEEP;
 		}
@@ -220,7 +214,6 @@ void loop()
 #if SIMULATE_LORA == false
 		do_send_mapping(lora.getSendjob(2));
 #endif
-		forceMap = false;
 		dev.fix.valid.init(); // Require new fix for new message
 		deviceState = DEVICE_STATE_SEND_WAIT_TX;
 		break;
@@ -249,19 +242,6 @@ void loop()
 			dev.wakeupRtc = false;
 			deviceState = DEVICE_STATE_SEND_WAIT_TX;
 		}
-		else if (lora.readyToTxIn() > 0 && LMIC_queryTxReady())
-		{
-			uint32_t waitToTx = lora.readyToTxIn();
-			Serial.printf("DutyCycle busy, next slot in %d ms\r\n", waitToTx);
-			if (waitToTx > heartbeatTxInterval)
-			{
-				Serial.println("Clamping Duty cycle to heartbeatTxInterval");
-				waitToTx = heartbeatTxInterval;
-			}
-			dev.setRtcAlarmIn((uint32_t)waitToTx + 1000); // give some buffer for lmic to recognize EV_TXCOMPLETE
-			dev.wakeupRtc = false;
-			deviceState = DEVICE_STATE_IDLE;
-		}
 
 		break;
 	}
@@ -282,8 +262,8 @@ void loop()
 	}
 	case DEVICE_STATE_IDLE:
 	{
-		Serial.print(millis());
-		Serial.println(": Going to Sleep now.");
+		// Serial.print(millis());
+		// Serial.println(": Going to Sleep now.");
 		Serial.flush();
 		digitalWrite(RAK7200_S76G_RED_LED, HIGH);
 		digitalWrite(RAK7200_S76G_GREEN_LED, HIGH);
