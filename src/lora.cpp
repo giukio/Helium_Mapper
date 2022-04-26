@@ -239,7 +239,13 @@ bool Lora::readyToTx()
 	bool rollover = last_os_getTime > os_getTime();
 
 	Serial.printf("%d: %d - %s\r\n", os_getTime(), LMICbandplan_nextTx(os_getTime()), LMIC_queryTxReady() ? "true" : "false");
-	return (rollover || os_getTime() > LMICbandplan_nextTx(os_getTime())) && LMIC_queryTxReady();
+	bool ret = (rollover || os_getTime() > LMICbandplan_nextTx(os_getTime())) && LMIC_queryTxReady();
+	if (ret)
+	{
+		last_os_getTime = os_getTime();
+	}
+	
+	return ret;
 }
 
 uint32_t Lora::readyToTxIn()
