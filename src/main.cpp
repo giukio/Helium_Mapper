@@ -253,7 +253,7 @@ void loop()
 		{
 			uint32_t waitToTx = lora.readyToTxIn();
 			Serial.printf("DutyCycle busy, next slot in %d ms\r\n", waitToTx);
-			if (waitToTx > heartbeatTxInterval)
+			if (waitToTx > heartbeatTxInterval)		// probably a rollover of os_getTime()
 			{
 				Serial.println("Clamping Duty cycle to heartbeatTxInterval");
 				waitToTx = heartbeatTxInterval;

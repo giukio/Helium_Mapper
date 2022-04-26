@@ -235,8 +235,11 @@ bool Lora::isJoined()
 
 bool Lora::readyToTx()
 {
+	static ostime_t last_os_getTime = os_getTime();
+	bool rollover = last_os_getTime > os_getTime();
+
 	Serial.printf("%d: %d - %s\r\n", os_getTime(), LMICbandplan_nextTx(os_getTime()), LMIC_queryTxReady() ? "true" : "false");
-	return (os_getTime() > LMICbandplan_nextTx(os_getTime())) && LMIC_queryTxReady();
+	return (rollover || os_getTime() > LMICbandplan_nextTx(os_getTime())) && LMIC_queryTxReady();
 }
 
 uint32_t Lora::readyToTxIn()
