@@ -109,7 +109,7 @@ void loop()
 		lastState = deviceState;
 		lastStateMilli = millis();
 	}
-	else if ((millis() - lastStateMilli) > 60000) // SM watchdog
+	else if ((millis() - lastStateMilli) > 10000) // SM watchdog
 	{
 		Serial.println("SM Watchdog tripped, resetting...");
 		deviceState = DEVICE_STATE_INIT;
@@ -188,12 +188,16 @@ void loop()
 	}
 	case DEVICE_STATE_CYCLE:
 	{
-		bool mapTime = ((millis() - lastMap) >= (mapTxInterval));
+		bool mapTime = (millis() < lastMap || (millis() - lastMap) >= (mapTxInterval));
 		bool mapDistance = dev.fix.location.DistanceKm(lastMapLocation) > 0.15F;
 		Serial.printf("readyToTx:%d isGpsValid:%d isMoving:%d forceMap:%d mapTime:%d mapDistance:%d\r\n", lora.readyToTx(), isGpsValid, dev.isMoving(), forceMap, mapTime, mapDistance);
 		if (lora.readyToTx() && isGpsValid && (dev.isMoving() || forceMap) && (mapTime || mapDistance))
 		{
 			deviceState = DEVICE_STATE_SEND_MINIMAL;
+		}
+		else if (millis() < lastHeartBeat || (millis() - lastHeartBeat) >= heartbeatTxInterval)
+		{
+			deviceState = DEVICE_STATE_SEND_HEARTBEAT;
 		}
 		else if (dev.isMoving() == false && forceMap == false)
 		{
@@ -230,8 +234,14 @@ void loop()
 		lora.UpdateOrAppendParameter(LoraParameter((uint16_t)(dev.getTemperature() * 10), LoraParameter::Kind::temperature));
 
 		pinMode(RAK7200_S76G_ADC_VBAT, INPUT_ANALOG);
-		uint32_t vBatAdc = analogRead(RAK7200_S76G_ADC_VBAT);
-		float voltage = (float(vBatAdc) / 4096 * 3.30 / 0.6 * 10.0);
+		delay(100);
+		uint32_t vBatAdc = 0;
+		for (uint16_t i = 0; i < 16; i++)
+		{
+			vBatAdc += analogRead(RAK7200_S76G_ADC_VBAT);
+		}
+		float voltage = (float(vBatAdc) / 16 / 4096 * 3.30 / 0.6 * 10.0);
+
 		lora.UpdateOrAppendParameter(LoraParameter((uint16_t)(voltage * 100.0), LoraParameter::Kind::voltage));
 
 		if (lora.readyToTx())
@@ -253,7 +263,7 @@ void loop()
 		{
 			uint32_t waitToTx = lora.readyToTxIn();
 			Serial.printf("DutyCycle busy, next slot in %d ms\r\n", waitToTx);
-			if (waitToTx > heartbeatTxInterval)		// probably a rollover of os_getTime()
+			if (waitToTx > heartbeatTxInterval) // probably a rollover of os_getTime()
 			{
 				Serial.println("Clamping Duty cycle to heartbeatTxInterval");
 				waitToTx = heartbeatTxInterval;

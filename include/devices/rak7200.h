@@ -162,6 +162,9 @@ public:
 
 private:
 	bool GNSS_probe();
+	void enableGpsPower();
+	void disableGpsPower();
+	void initGps();
 	HardwareSerial *_GNSS = NULL;
 	bool _has_SX1276;
 

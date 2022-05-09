@@ -98,8 +98,7 @@ bool Rak7200::GNSS_probe()
 	}
 	return false;
 }
-
-void Rak7200::setGps()
+void Rak7200::enableGpsPower()
 {
 	/* activate 1.8V<->3.3V level shifters */
 	pinMode(S7xG_CXD5603_LEVEL_SHIFTER, OUTPUT);
@@ -107,6 +106,11 @@ void Rak7200::setGps()
 	while (!_GNSS)
 		yield();
 	_GNSS->begin(S7xG_CXD5603_BAUD_RATE);
+	while (_GNSS->available())
+	{
+		_GNSS->read();
+	}
+	_GNSS->flush();
 
 	// power on GNSS
 	Serial.println("Powering On GNSS");
@@ -121,16 +125,25 @@ void Rak7200::setGps()
 
 	/* give Sony GNSS few ms to warm up */
 	delay(125);
+}
 
+void Rak7200::disableGpsPower()
+{
+	// power off GNSS
+	digitalWrite(RAK7200_S76G_CXD5603_POWER_ENABLE, LOW);
+
+	/* deactivate 1.8V<->3.3V level shifters */
+	digitalWrite(S7xG_CXD5603_LEVEL_SHIFTER, LOW);
+}
+
+void Rak7200::initGps()
+{
 	_GNSS->flush();
 	_GNSS->write("@GNS 0xF\r\n"); // Configure GPS, GLONASS, SBAS, QZSS
 	Serial.println(_GNSS->readStringUntil('\n'));
 
 	_GNSS->write("@BSSL 0xA1\r\n"); // GGA and RMC and ZDA
 	Serial.println(_GNSS->readStringUntil('\n'));
-
-	// _GNSS->write("@GPOS 48304339 11912833 1000\r\n"); // @GPOS: Receiver position setting (ellipsoidal coordinates)
-	// Serial.println(_GNSS->readStringUntil('\n'));
 
 	// _GNSS->write("@GTIM 2022 04 12 11 27 00\r\n");
 	_GNSS->printf("@GTIM 20%02d %02d %02d %02d %02d %02d\r\n", _rtc.getYear(), _rtc.getMonth(), _rtc.getDay(), _rtc.getHours(), _rtc.getMinutes(), _rtc.getSeconds());
@@ -144,6 +157,12 @@ void Rak7200::setGps()
 	{
 		_GNSS->begin(9600);
 	}
+}
+
+void Rak7200::setGps()
+{
+	this->enableGpsPower();
+	this->initGps();
 
 	_GNSS->write("@GSR\r\n"); // Hot Start for TTFF
 	Serial.println(_GNSS->readStringUntil('\n'));
@@ -160,18 +179,15 @@ bool Rak7200::wakeGps()
 	if (gpsSleeping)
 	{
 		wakeOk = false;
-		while (_GNSS->available())
-		{
-			_GNSS->read();
-		}
-		_GNSS->flush();
 
-		for (int i = 0; i < 3; i++)
+		this->enableGpsPower();
+
+		for (int i = 0; i < 5; i++)
 		{
 			_GNSS->write("@WUP\r\n"); // Wake Up
 			String ret = _GNSS->readStringUntil('\n');
 			Serial.println(ret);
-			if (ret.indexOf("[WUP]") != -1)
+			if (ret.indexOf("[WUP] Done") != -1)
 			{
 				Serial.println("GPS Wakeup success!");
 				wakeOk = true;
@@ -185,10 +201,7 @@ bool Rak7200::wakeGps()
 		}
 		if (wakeOk)
 		{
-			//_GNSS->write("@GTIM 2022 4 12 8 30 0\r\n"); // @GTIM: Time setting
-			_GNSS->printf("@GTIM 20%02d %02d %02d %02d %02d %02d\r\n", _rtc.getYear(), _rtc.getMonth(), _rtc.getDay(), _rtc.getHours(), _rtc.getMinutes(), _rtc.getSeconds());
-			Serial.printf("@GTIM 20%02d %02d %02d %02d %02d %02d\r\n", _rtc.getYear(), _rtc.getMonth(), _rtc.getDay(), _rtc.getHours(), _rtc.getMinutes(), _rtc.getSeconds());
-			Serial.println(_GNSS->readStringUntil('\n'));
+			this->initGps();
 
 			_GNSS->write("@GSR\r\n"); // Hot Start for TTFF
 			Serial.println(_GNSS->readStringUntil('\n'));
@@ -211,9 +224,12 @@ void Rak7200::sleepGps()
 	_GNSS->write("@BUP\r\n"); // @BUP: Backup data save
 	Serial.println(_GNSS->readStringUntil('\n'));
 
-	_GNSS->write("@SLP 0\r\n"); // Start Sleep Mode 0
+	// _GNSS->write("@SLP 0\r\n"); // Start Sleep Mode 0
+	_GNSS->write("@SLP 2\r\n"); // Start Sleep Mode 2 - restart
 	Serial.println(_GNSS->readStringUntil('\n'));
 	delay(100);
+
+	this->disableGpsPower();
 }
 
 gps_fix Rak7200::getGpsFix()
@@ -636,7 +652,7 @@ void Rak7200::setRtcTimeFromGps()
 		uint32_t now = ((((_rtc.getDay() - 1) * 24 + _rtc.getHours()) * 60 + _rtc.getMinutes()) * 60 + _rtc.getSeconds()) * 1000 + _rtc.getSubSeconds();
 		uint32_t alarm = ((((_rtc.getAlarmDay() - 1) * 24 + _rtc.getAlarmHours()) * 60 + _rtc.getAlarmMinutes()) * 60 + _rtc.getAlarmSeconds()) * 1000 + _rtc.getAlarmSubSeconds();
 		int64_t delta = alarm - now;
-		if (delta <= 0)
+		if (delta <= 0 || delta > heartbeatTxInterval)
 		{
 			delta = heartbeatTxInterval;
 		}
